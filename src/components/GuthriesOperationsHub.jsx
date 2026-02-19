@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 const R = "#C8102E";
 const YES_BG = "#e8f5e9"; const YES_BD = "#81c784";
 const NO_BG  = "#ffebee"; const NO_BD  = "#e57373";
+const WEBHOOK_URL = "https://n8n.srv1382362.hstgr.cloud/webhook/guthries-operations-hub";
 
 const inputStyle = {
   width:"100%", boxSizing:"border-box", border:"1px solid #ddd",
@@ -211,48 +212,27 @@ function ItemRow({ item, ans, onAnswer, onNotes, onPhoto, showPts = true }) {
   );
 }
 
-function WebhookPanel({ webhookUrl, setWebhookUrl, onSubmit, submitting, submitStatus }) {
-  const [open, setOpen] = useState(false);
+function SubmitButton({ onSubmit, submitting, submitStatus, color }) {
   return (
     <div style={{ marginTop:10 }}>
-      <button onClick={() => setOpen(p=>!p)}
+      <button onClick={onSubmit} disabled={submitting}
         style={{
-          width:"100%", padding:"11px", background:"white", color:"#444",
-          border:"1px solid #ddd", borderRadius:8, fontWeight:700,
-          fontSize:14, cursor:"pointer"
+          width:"100%", padding:"13px", background:color, color:"white",
+          border:"none", borderRadius:8, fontWeight:800, fontSize:15,
+          cursor: submitting ? "default" : "pointer",
+          boxShadow:`0 3px 10px ${color}55`, opacity: submitting ? 0.7 : 1
         }}
       >
-        {open?"▲":"▼"} Send to Google Sheets
+        {submitting ? "Sending…" : "📤 Submit to Google Sheets"}
       </button>
-      {open && (
-        <div style={{ marginTop:10 }}>
-          <div style={{ fontSize:11, color:"#888", marginBottom:8, lineHeight:1.6 }}>
-            Paste your webhook URL. All form data including photos (base64) will be sent.
-          </div>
-          <input type="url" placeholder="https://your-webhook-url/..."
-            value={webhookUrl} onChange={e => setWebhookUrl(e.target.value)}
-            style={{ ...inputStyle, marginBottom:10 }}
-          />
-          <button onClick={onSubmit} disabled={submitting || !webhookUrl.trim()}
-            style={{
-              width:"100%", padding:"11px",
-              background: webhookUrl.trim() ? "#1565c0" : "#ccc",
-              color:"white", border:"none", borderRadius:8,
-              fontWeight:800, fontSize:14, cursor: webhookUrl.trim() ? "pointer" : "default"
-            }}
-          >
-            {submitting ? "Sending…" : "📤 Submit to Google Sheets"}
-          </button>
-          {submitStatus === "success" && (
-            <div style={{ marginTop:8, padding:"10px", background:YES_BG, borderRadius:7, color:"#2e7d32", fontSize:13, fontWeight:700, textAlign:"center" }}>
-              ✅ Submitted successfully!
-            </div>
-          )}
-          {submitStatus === "error" && (
-            <div style={{ marginTop:8, padding:"10px", background:NO_BG, borderRadius:7, color:R, fontSize:13, fontWeight:700, textAlign:"center" }}>
-              ❌ Submission failed. Check your webhook URL.
-            </div>
-          )}
+      {submitStatus === "success" && (
+        <div style={{ marginTop:8, padding:"10px", background:YES_BG, borderRadius:7, color:"#2e7d32", fontSize:13, fontWeight:700, textAlign:"center" }}>
+          ✅ Submitted successfully!
+        </div>
+      )}
+      {submitStatus === "error" && (
+        <div style={{ marginTop:8, padding:"10px", background:NO_BG, borderRadius:7, color:R, fontSize:13, fontWeight:700, textAlign:"center" }}>
+          ❌ Submission failed. Please try again.
         </div>
       )}
     </div>
@@ -584,7 +564,6 @@ function RestaurantInspection({ onBack }) {
   });
   const [answers, setAnswersState] = useState(inspectInitAnswers);
   const [collapsed, setCollapsed] = useState(Object.fromEntries(INSPECT_SECTIONS.map(s=>[s.id,true])));
-  const [webhookUrl, setWebhookUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState(null);
 
@@ -612,7 +591,7 @@ function RestaurantInspection({ onBack }) {
           possible:s.possible, items:s.items.map(item=>({ text:item.text, pts:item.pts,
             answer:answers[item.id]?.answer, notes:answers[item.id]?.notes, photo:answers[item.id]?.photo }))
         }))};
-      const res = await fetch(webhookUrl,{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
+      const res = await fetch(WEBHOOK_URL,{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
       setSubmitStatus(res.ok?"success":"error");
     } catch { setSubmitStatus("error"); }
     setSubmitting(false);
@@ -716,8 +695,7 @@ function RestaurantInspection({ onBack }) {
           style={{ width:"100%", padding:"13px", marginBottom:10, background:R, color:"white", border:"none", borderRadius:8, fontWeight:800, fontSize:15, cursor:"pointer", boxShadow:`0 3px 10px ${R}55` }}>
           📄 Download / Print PDF
         </button>
-        <WebhookPanel webhookUrl={webhookUrl} setWebhookUrl={setWebhookUrl}
-          onSubmit={handleSubmit} submitting={submitting} submitStatus={submitStatus} />
+        <SubmitButton onSubmit={handleSubmit} submitting={submitting} submitStatus={submitStatus} color={R} />
       </div>
     </div>
   );
@@ -803,7 +781,6 @@ function LpAudit({ onBack }) {
   const today = new Date().toISOString().split("T")[0];
   const [info, setInfo] = useState({ auditorName:"", location:"", date:today, managerOnDuty:"", startTime:"", endTime:"" });
   const [answers, setAnswersState] = useState(lpInitAnswers);
-  const [webhookUrl, setWebhookUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState(null);
 
@@ -830,7 +807,7 @@ function LpAudit({ onBack }) {
         percentage:pct.toFixed(1), timestamp:new Date().toISOString(),
         items: LP_ITEMS.map(item=>({ text:item.text, pts:item.pts, answer:answers[item.id]?.answer, notes:answers[item.id]?.notes, photo:answers[item.id]?.photo }))
       };
-      const res = await fetch(webhookUrl,{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
+      const res = await fetch(WEBHOOK_URL,{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
       setSubmitStatus(res.ok?"success":"error");
     } catch { setSubmitStatus("error"); }
     setSubmitting(false);
@@ -919,8 +896,7 @@ function LpAudit({ onBack }) {
           style={{ width:"100%", padding:"13px", marginBottom:10, background:BLUE, color:"white", border:"none", borderRadius:8, fontWeight:800, fontSize:15, cursor:"pointer", boxShadow:`0 3px 10px ${BLUE}55` }}>
           📄 Download / Print PDF
         </button>
-        <WebhookPanel webhookUrl={webhookUrl} setWebhookUrl={setWebhookUrl}
-          onSubmit={handleSubmit} submitting={submitting} submitStatus={submitStatus} />
+        <SubmitButton onSubmit={handleSubmit} submitting={submitting} submitStatus={submitStatus} color={BLUE} />
       </div>
     </div>
   );
@@ -970,7 +946,6 @@ function generateRmPDF(form) {
 function RmRequest({ onBack }) {
   const today = new Date().toISOString().split("T")[0];
   const [form, setForm] = useState({ submittedBy:"", location:"", date:today, woNumber:"", priority:"", issue:"", photo:null });
-  const [webhookUrl, setWebhookUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState(null);
   const [submitted, setSubmitted] = useState(false);
@@ -988,7 +963,7 @@ function RmRequest({ onBack }) {
     setSubmitting(true); setSubmitStatus(null);
     try {
       const payload = { formType:"rm_request", ...form, timestamp:new Date().toISOString() };
-      const res = await fetch(webhookUrl,{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
+      const res = await fetch(WEBHOOK_URL,{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
       setSubmitStatus(res.ok?"success":"error");
       if (res.ok) setSubmitted(true);
     } catch { setSubmitStatus("error"); }
@@ -1124,8 +1099,7 @@ function RmRequest({ onBack }) {
         >
           📄 Download / Print PDF
         </button>
-        <WebhookPanel webhookUrl={webhookUrl} setWebhookUrl={setWebhookUrl}
-          onSubmit={handleSubmit} submitting={submitting} submitStatus={submitStatus} />
+        <SubmitButton onSubmit={handleSubmit} submitting={submitting} submitStatus={submitStatus} color={GREEN} />
         {!isValid && (
           <div style={{ marginTop:10, fontSize:11, color:"#aaa", textAlign:"center" }}>
             Complete Location, Priority, and Issue to enable export
