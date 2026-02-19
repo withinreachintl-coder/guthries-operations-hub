@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 
 // ─── BRAND ───────────────────────────────────────────────────────────────────
 const R = "#C8102E";
@@ -79,6 +79,14 @@ function HomeScreen({ onNav }) {
       desc:"Repair & Maintenance service request",
       color:"#2e7d32",
       accent:"#e8f5e9"
+    },
+    {
+      id:"dashboard",
+      emoji:"📊",
+      title:"Dashboard",
+      desc:"Score trends and KPIs across all locations",
+      color:"#6a1b9a",
+      accent:"#f3e5f5"
     },
   ];
 
@@ -1114,6 +1122,230 @@ function RmRequest({ onBack }) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+//  FORM 4 — DASHBOARD
+// ══════════════════════════════════════════════════════════════════════════════
+const SHEET_ID = "1sDOlld_vsXQOamXWmV277jF-6Jl_XQGVU9d4gkcOov4";
+const API_KEY = "AIzaSyCbUZJ49uk2OX3lDoeR2nBU9-4JlM8FAwQ";
+const PURPLE = "#6a1b9a";
+
+function fetchSheet(tabName) {
+  return fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(tabName)}?key=${API_KEY}`)
+    .then(r => { if (!r.ok) throw new Error(`Failed to fetch ${tabName}`); return r.json(); })
+    .then(data => {
+      if (!data.values || data.values.length < 2) return [];
+      const headers = data.values[0].map(h => h.trim().toLowerCase());
+      return data.values.slice(1).map(row => {
+        const obj = {};
+        headers.forEach((h, i) => { obj[h] = row[i] || ""; });
+        return obj;
+      });
+    });
+}
+
+function parseScore(row) {
+  const pctField = row.percentage || row.score || row["score %"] || row["score%"] || row.pct || "";
+  const num = parseFloat(pctField);
+  if (!isNaN(num)) return num;
+  const earned = parseFloat(row.totalearned || row.earned || row.total_earned || "0");
+  const possible = parseFloat(row.totalpossible || row.possible || row.total_possible || "1");
+  return possible > 0 ? (earned / possible) * 100 : 0;
+}
+
+function parseLocation(row) {
+  return row.location || row.store || row.site || "Unknown";
+}
+
+function parseDate(row) {
+  return row.date || row.timestamp?.split("T")[0] || "—";
+}
+
+function scoreColor(pct, thresholds) {
+  return pct >= thresholds[0] ? "#2e7d32" : pct >= thresholds[1] ? "#e65100" : R;
+}
+
+function KpiCard({ label, value, color }) {
+  return (
+    <div style={{ flex:1, background:"white", borderRadius:10, padding:"14px 10px", textAlign:"center", boxShadow:"0 1px 4px rgba(0,0,0,0.08)", minWidth:0 }}>
+      <div style={{ fontSize:24, fontWeight:900, color: color || "#1a1a1a", lineHeight:1 }}>{value}</div>
+      <div style={{ fontSize:10, color:"#888", marginTop:4, textTransform:"uppercase", letterSpacing:0.5 }}>{label}</div>
+    </div>
+  );
+}
+
+function TrendTable({ rows, thresholds, accentColor }) {
+  if (!rows.length) return <div style={{ fontSize:13, color:"#aaa", textAlign:"center", padding:16 }}>No data yet</div>;
+  return (
+    <div style={{ overflowX:"auto" }}>
+      <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
+        <thead>
+          <tr style={{ background:accentColor, color:"white", fontSize:11, fontWeight:700 }}>
+            <td style={{ padding:"8px 10px" }}>DATE</td>
+            <td style={{ padding:"8px 10px" }}>LOCATION</td>
+            <td style={{ padding:"8px 10px", textAlign:"right" }}>SCORE</td>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => {
+            const c = scoreColor(r.score, thresholds);
+            return (
+              <tr key={i} style={{ borderBottom:"1px solid #eee" }}>
+                <td style={{ padding:"8px 10px", color:"#555" }}>{r.date}</td>
+                <td style={{ padding:"8px 10px", color:"#333", fontWeight:600 }}>{r.location}</td>
+                <td style={{ padding:"8px 10px", textAlign:"right", fontWeight:800, color:c }}>{r.score.toFixed(1)}%</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function Dashboard({ onBack }) {
+  const [inspections, setInspections] = useState([]);
+  const [lpAudits, setLpAudits] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [filter, setFilter] = useState("All");
+
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    Promise.all([
+      fetchSheet("Inspections").catch(() => []),
+      fetchSheet("Loss Prevention Audits").catch(() => []),
+    ])
+      .then(([insp, lp]) => {
+        setInspections(insp.map(r => ({ score: parseScore(r), location: parseLocation(r), date: parseDate(r) })));
+        setLpAudits(lp.map(r => ({ score: parseScore(r), location: parseLocation(r), date: parseDate(r) })));
+      })
+      .catch(() => setError("Failed to load dashboard data. Check your connection and try again."))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const filtered = (rows) => filter === "All" ? rows : rows.filter(r => r.location === filter);
+  const avg = (rows) => rows.length ? rows.reduce((s, r) => s + r.score, 0) / rows.length : 0;
+  const best = (rows) => {
+    if (!rows.length) return "—";
+    const byLoc = {};
+    rows.forEach(r => { if (!byLoc[r.location]) byLoc[r.location] = []; byLoc[r.location].push(r.score); });
+    let top = "", topAvg = -1;
+    Object.entries(byLoc).forEach(([loc, scores]) => { const a = scores.reduce((s,v)=>s+v,0)/scores.length; if (a > topAvg) { topAvg = a; top = loc; } });
+    return top || "—";
+  };
+  const worst = (rows) => {
+    if (!rows.length) return "—";
+    const byLoc = {};
+    rows.forEach(r => { if (!byLoc[r.location]) byLoc[r.location] = []; byLoc[r.location].push(r.score); });
+    let bot = "", botAvg = Infinity;
+    Object.entries(byLoc).forEach(([loc, scores]) => { const a = scores.reduce((s,v)=>s+v,0)/scores.length; if (a < botAvg) { botAvg = a; bot = loc; } });
+    return bot || "—";
+  };
+  const last10 = (rows) => [...rows].reverse().slice(0, 10);
+
+  const fi = filtered(inspections);
+  const fl = filtered(lpAudits);
+
+  return (
+    <div style={{ fontFamily:"'Segoe UI',system-ui,sans-serif", background:"#f2f2f2", minHeight:"100vh", paddingBottom:40 }}>
+      <Header title="Dashboard" subtitle="Operations Hub" onBack={onBack} />
+
+      {/* Location Filter */}
+      <div style={{ background:"white", padding:"10px 12px", borderBottom:"1px solid #eee", overflowX:"auto", whiteSpace:"nowrap" }}>
+        {["All", ...LOCATIONS].map(loc => (
+          <button key={loc} onClick={() => setFilter(loc)}
+            style={{
+              display:"inline-block", padding:"6px 14px", marginRight:8, border:"none",
+              borderRadius:20, fontSize:12, fontWeight:700, cursor:"pointer",
+              background: filter === loc ? PURPLE : "#f0f0f0",
+              color: filter === loc ? "white" : "#666",
+              transition:"all 0.15s"
+            }}
+          >
+            {loc}
+          </button>
+        ))}
+      </div>
+
+      {loading && (
+        <div style={{ textAlign:"center", padding:"60px 20px" }}>
+          <div style={{ fontSize:36, marginBottom:12, animation:"spin 1s linear infinite" }}>⏳</div>
+          <div style={{ fontSize:14, color:"#888", fontWeight:600 }}>Loading dashboard data…</div>
+          <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+        </div>
+      )}
+
+      {error && (
+        <div style={{ margin:12, padding:16, background:NO_BG, border:`1px solid ${NO_BD}`, borderRadius:10, textAlign:"center" }}>
+          <div style={{ fontSize:24, marginBottom:8 }}>⚠️</div>
+          <div style={{ fontSize:14, color:R, fontWeight:700 }}>{error}</div>
+          <button onClick={() => window.location.reload()}
+            style={{ marginTop:12, padding:"8px 20px", background:R, color:"white", border:"none", borderRadius:7, fontWeight:700, cursor:"pointer", fontSize:13 }}>
+            Retry
+          </button>
+        </div>
+      )}
+
+      {!loading && !error && (
+        <>
+          {/* Restaurant Inspection KPIs */}
+          <div style={{ margin:"12px 12px 0" }}>
+            <div style={{ fontWeight:800, fontSize:14, color:R, marginBottom:10, display:"flex", alignItems:"center", gap:8 }}>
+              <span style={{ fontSize:18 }}>🍗</span> Restaurant Inspections
+            </div>
+            <div style={{ display:"flex", gap:8, marginBottom:12 }}>
+              <KpiCard label="Avg Score" value={fi.length ? `${avg(fi).toFixed(1)}%` : "—"} color={fi.length ? scoreColor(avg(fi), [85, 70]) : "#aaa"} />
+              <KpiCard label="Total" value={fi.length} color={PURPLE} />
+            </div>
+            <div style={{ display:"flex", gap:8, marginBottom:12 }}>
+              <KpiCard label="Best Location" value={best(fi)} color="#2e7d32" />
+              <KpiCard label="Needs Work" value={worst(fi)} color={R} />
+            </div>
+          </div>
+
+          <div style={{ margin:"0 12px 16px", background:"white", borderRadius:10, overflow:"hidden", boxShadow:"0 1px 4px rgba(0,0,0,0.08)" }}>
+            <div style={{ background:R, color:"white", padding:"10px 14px", fontWeight:800, fontSize:13, display:"flex", justifyContent:"space-between" }}>
+              <span>Recent Inspections</span>
+              <span style={{ opacity:0.8, fontSize:11 }}>Last 10</span>
+            </div>
+            <TrendTable rows={last10(fi)} thresholds={[85, 70]} accentColor={R} />
+          </div>
+
+          {/* LP Audit KPIs */}
+          <div style={{ margin:"0 12px" }}>
+            <div style={{ fontWeight:800, fontSize:14, color:BLUE, marginBottom:10, display:"flex", alignItems:"center", gap:8 }}>
+              <span style={{ fontSize:18 }}>🔒</span> Loss Prevention Audits
+            </div>
+            <div style={{ display:"flex", gap:8, marginBottom:12 }}>
+              <KpiCard label="Avg Score" value={fl.length ? `${avg(fl).toFixed(1)}%` : "—"} color={fl.length ? scoreColor(avg(fl), [85, 60]) : "#aaa"} />
+              <KpiCard label="Total" value={fl.length} color={PURPLE} />
+            </div>
+            <div style={{ display:"flex", gap:8, marginBottom:12 }}>
+              <KpiCard label="Best Location" value={best(fl)} color="#2e7d32" />
+              <KpiCard label="Needs Work" value={worst(fl)} color={R} />
+            </div>
+          </div>
+
+          <div style={{ margin:"0 12px 16px", background:"white", borderRadius:10, overflow:"hidden", boxShadow:"0 1px 4px rgba(0,0,0,0.08)" }}>
+            <div style={{ background:BLUE, color:"white", padding:"10px 14px", fontWeight:800, fontSize:13, display:"flex", justifyContent:"space-between" }}>
+              <span>Recent LP Audits</span>
+              <span style={{ opacity:0.8, fontSize:11 }}>Last 10</span>
+            </div>
+            <TrendTable rows={last10(fl)} thresholds={[85, 60]} accentColor={BLUE} />
+          </div>
+
+          {filter !== "All" && fi.length === 0 && fl.length === 0 && (
+            <div style={{ textAlign:"center", padding:"30px 20px", color:"#aaa", fontSize:13 }}>
+              No data found for {filter}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 //  ROOT APP
 // ══════════════════════════════════════════════════════════════════════════════
 export default function App() {
@@ -1122,5 +1354,6 @@ export default function App() {
   if (screen === "inspection") return <RestaurantInspection onBack={() => setScreen("home")} />;
   if (screen === "lp")         return <LpAudit             onBack={() => setScreen("home")} />;
   if (screen === "rm")         return <RmRequest           onBack={() => setScreen("home")} />;
+  if (screen === "dashboard")  return <Dashboard           onBack={() => setScreen("home")} />;
   return <HomeScreen onNav={setScreen} />;
 }
