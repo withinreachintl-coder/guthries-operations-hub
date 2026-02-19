@@ -57,6 +57,14 @@ function Header({ title, subtitle, onBack, right }) {
 function HomeScreen({ onNav }) {
   const tools = [
     {
+      id:"dashboard",
+      emoji:"📊",
+      title:"Dashboard",
+      desc:"Score trends and KPIs across all locations",
+      color:"#6a1b9a",
+      accent:"#f3e5f5"
+    },
+    {
       id:"inspection",
       emoji:"🍗",
       title:"Restaurant Inspection",
@@ -79,14 +87,6 @@ function HomeScreen({ onNav }) {
       desc:"Repair & Maintenance service request",
       color:"#2e7d32",
       accent:"#e8f5e9"
-    },
-    {
-      id:"dashboard",
-      emoji:"📊",
-      title:"Dashboard",
-      desc:"Score trends and KPIs across all locations",
-      color:"#6a1b9a",
-      accent:"#f3e5f5"
     },
   ];
 
