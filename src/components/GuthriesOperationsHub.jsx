@@ -5,6 +5,7 @@ const R = "#C8102E";
 const YES_BG = "#e8f5e9"; const YES_BD = "#81c784";
 const NO_BG  = "#ffebee"; const NO_BD  = "#e57373";
 const WEBHOOK_URL = "https://n8n.srv1382362.hstgr.cloud/webhook/guthries-operations-hub";
+const LOCATIONS = ["Collierville", "Dexter", "Whitehaven", "Olive Branch", "Oxford"];
 
 const inputStyle = {
   width:"100%", boxSizing:"border-box", border:"1px solid #ddd",
@@ -628,7 +629,7 @@ function RestaurantInspection({ onBack }) {
             <label style={labelStyle}>Inspector Name *</label>
             <input style={inputStyle} placeholder="Enter your name" value={info.inspectorName} onChange={e=>setInfo(p=>({...p,inspectorName:e.target.value}))} />
           </div>
-          <div><label style={labelStyle}>Location *</label><input style={inputStyle} placeholder="Location" value={info.location} onChange={e=>setInfo(p=>({...p,location:e.target.value}))} /></div>
+          <div><label style={labelStyle}>Location *</label><select style={inputStyle} value={info.location} onChange={e=>setInfo(p=>({...p,location:e.target.value}))}><option value="">Select location…</option>{LOCATIONS.map(l=><option key={l} value={l}>{l}</option>)}</select></div>
           <div><label style={labelStyle}>Date *</label><input type="date" style={inputStyle} value={info.date} onChange={e=>setInfo(p=>({...p,date:e.target.value}))} /></div>
           <div><label style={labelStyle}>Start Time *</label><input type="time" style={inputStyle} value={info.startTime} onChange={e=>setInfo(p=>({...p,startTime:e.target.value}))} /></div>
           <div><label style={labelStyle}>End Time *</label><input type="time" style={inputStyle} value={info.endTime} onChange={e=>setInfo(p=>({...p,endTime:e.target.value}))} /></div>
@@ -844,7 +845,7 @@ function LpAudit({ onBack }) {
             <label style={labelStyle}>Auditor Name *</label>
             <input style={inputStyle} placeholder="Enter your name" value={info.auditorName} onChange={e=>setInfo(p=>({...p,auditorName:e.target.value}))} />
           </div>
-          <div><label style={labelStyle}>Location *</label><input style={inputStyle} placeholder="Location" value={info.location} onChange={e=>setInfo(p=>({...p,location:e.target.value}))} /></div>
+          <div><label style={labelStyle}>Location *</label><select style={inputStyle} value={info.location} onChange={e=>setInfo(p=>({...p,location:e.target.value}))}><option value="">Select location…</option>{LOCATIONS.map(l=><option key={l} value={l}>{l}</option>)}</select></div>
           <div><label style={labelStyle}>Date *</label><input type="date" style={inputStyle} value={info.date} onChange={e=>setInfo(p=>({...p,date:e.target.value}))} /></div>
           <div><label style={labelStyle}>Manager on Duty *</label><input style={inputStyle} placeholder="Name" value={info.managerOnDuty} onChange={e=>setInfo(p=>({...p,managerOnDuty:e.target.value}))} /></div>
           <div><label style={labelStyle}>Start Time</label><input type="time" style={inputStyle} value={info.startTime} onChange={e=>setInfo(p=>({...p,startTime:e.target.value}))} /></div>
@@ -943,9 +944,11 @@ function generateRmPDF(form) {
   </body></html>`;
 }
 
+const generateWO = () => `WO-${new Date().getFullYear()}-${String(Math.floor(1000 + Math.random() * 9000))}`;
+
 function RmRequest({ onBack }) {
   const today = new Date().toISOString().split("T")[0];
-  const [form, setForm] = useState({ submittedBy:"", location:"", date:today, woNumber:"", priority:"", issue:"", photo:null });
+  const [form, setForm] = useState({ submittedBy:"", location:"", date:today, woNumber:generateWO(), priority:"", issue:"", photo:null });
   const [submitting, setSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState(null);
   const [submitted, setSubmitted] = useState(false);
@@ -981,7 +984,7 @@ function RmRequest({ onBack }) {
           <div style={{ fontSize:28, marginBottom:6 }}>✅</div>
           <div style={{ fontWeight:800, fontSize:15, color:"#2e7d32" }}>Request Submitted!</div>
           <div style={{ fontSize:12, color:"#555", marginTop:4 }}>WO# {form.woNumber || "Pending"} — {form.location}</div>
-          <button onClick={() => { setForm({ submittedBy:"", location:"", date:today, woNumber:"", priority:"", issue:"", photo:null }); setSubmitted(false); setSubmitStatus(null); }}
+          <button onClick={() => { setForm({ submittedBy:"", location:"", date:today, woNumber:generateWO(), priority:"", issue:"", photo:null }); setSubmitted(false); setSubmitStatus(null); }}
             style={{ marginTop:12, padding:"8px 20px", background:GREEN, color:"white", border:"none", borderRadius:7, fontWeight:700, cursor:"pointer", fontSize:13 }}>
             New Request
           </button>
@@ -998,15 +1001,15 @@ function RmRequest({ onBack }) {
           </div>
           <div>
             <label style={labelStyle}>Location *</label>
-            <input style={inputStyle} placeholder="Location" value={form.location} onChange={e=>setForm(p=>({...p,location:e.target.value}))} />
+            <select style={inputStyle} value={form.location} onChange={e=>setForm(p=>({...p,location:e.target.value}))}><option value="">Select location…</option>{LOCATIONS.map(l=><option key={l} value={l}>{l}</option>)}</select>
           </div>
           <div>
             <label style={labelStyle}>Date *</label>
             <input type="date" style={inputStyle} value={form.date} onChange={e=>setForm(p=>({...p,date:e.target.value}))} />
           </div>
           <div style={{ gridColumn:"1/-1" }}>
-            <label style={labelStyle}>Work Order # (if available)</label>
-            <input style={inputStyle} placeholder="Unique WO# or leave blank" value={form.woNumber} onChange={e=>setForm(p=>({...p,woNumber:e.target.value}))} />
+            <label style={labelStyle}>Work Order #</label>
+            <input style={{...inputStyle, background:"#f5f5f5", color:"#555"}} value={form.woNumber} readOnly />
           </div>
         </div>
       </div>
