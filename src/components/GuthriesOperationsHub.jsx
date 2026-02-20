@@ -962,7 +962,7 @@ function generateRmPDF(form) {
 
 const generateWO = () => `WO-${new Date().getFullYear()}-${String(Math.floor(1000 + Math.random() * 9000))}`;
 
-function RmRequest({ onBack }) {
+function RmNewRequest() {
   const today = new Date().toISOString().split("T")[0];
   const [form, setForm] = useState({ submittedBy:"", location:"", date:today, woNumber:generateWO(), priority:"", issue:"", photo:null });
   const [submitting, setSubmitting] = useState(false);
@@ -992,22 +992,19 @@ function RmRequest({ onBack }) {
   const priObj = PRIORITIES.find(p=>p.val===form.priority);
 
   return (
-    <div style={{ fontFamily:"'Segoe UI',system-ui,sans-serif", background:"#f2f2f2", minHeight:"100vh", paddingBottom:40 }}>
-      <Header title="R&M Service Request" subtitle="Operations Hub" onBack={onBack} />
-
+    <>
       {submitted && (
         <div style={{ margin:"12px 12px 0", padding:"16px", background:YES_BG, border:`1px solid ${YES_BD}`, borderRadius:10, textAlign:"center" }}>
           <div style={{ fontSize:28, marginBottom:6 }}>✅</div>
           <div style={{ fontWeight:800, fontSize:15, color:"#2e7d32" }}>Request Submitted!</div>
           <div style={{ fontSize:12, color:"#555", marginTop:4 }}>WO# {form.woNumber || "Pending"} — {form.location}</div>
-          <button onClick={() => { setForm({ submittedBy:"", location:"", date:today, woNumber:generateWO(), priority:"", issue:"", photo:null }); setSubmitted(false); setSubmitStatus(null); }}
+          <button onClick={() => { setForm({ submittedBy:"", location:"", date:new Date().toISOString().split("T")[0], woNumber:generateWO(), priority:"", issue:"", photo:null }); setSubmitted(false); setSubmitStatus(null); }}
             style={{ marginTop:12, padding:"8px 20px", background:GREEN, color:"white", border:"none", borderRadius:7, fontWeight:700, cursor:"pointer", fontSize:13 }}>
             New Request
           </button>
         </div>
       )}
 
-      {/* Form */}
       <div style={{ margin:"12px 12px 10px", background:"white", borderRadius:10, padding:16, boxShadow:"0 1px 4px rgba(0,0,0,0.08)" }}>
         <div style={{ fontWeight:800, fontSize:13, color:GREEN, marginBottom:14, textTransform:"uppercase", letterSpacing:0.5 }}>Request Details</div>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
@@ -1030,7 +1027,6 @@ function RmRequest({ onBack }) {
         </div>
       </div>
 
-      {/* Priority */}
       <div style={{ margin:"0 12px 10px", background:"white", borderRadius:10, padding:16, boxShadow:"0 1px 4px rgba(0,0,0,0.08)" }}>
         <div style={{ fontWeight:800, fontSize:13, color:GREEN, marginBottom:14, textTransform:"uppercase", letterSpacing:0.5 }}>Priority *</div>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
@@ -1054,14 +1050,12 @@ function RmRequest({ onBack }) {
         </div>
       </div>
 
-      {/* Issue */}
       <div style={{ margin:"0 12px 10px", background:"white", borderRadius:10, padding:16, boxShadow:"0 1px 4px rgba(0,0,0,0.08)" }}>
         <div style={{ fontWeight:800, fontSize:13, color:GREEN, marginBottom:14, textTransform:"uppercase", letterSpacing:0.5 }}>Issue to Resolve *</div>
         <textarea value={form.issue} onChange={e=>setForm(p=>({...p,issue:e.target.value}))}
           placeholder="Describe the issue in detail — what is broken, where it is located, when it started, and any relevant context..."
           style={{ ...inputStyle, minHeight:120, resize:"vertical", lineHeight:1.6 }}
         />
-        {/* Photo */}
         <div style={{ marginTop:12 }}>
           <div style={{ fontWeight:700, fontSize:12, color:"#888", marginBottom:8, textTransform:"uppercase", letterSpacing:0.5 }}>Photo (optional)</div>
           <div style={{ display:"flex", alignItems:"center", gap:12 }}>
@@ -1091,7 +1085,6 @@ function RmRequest({ onBack }) {
         </div>
       </div>
 
-      {/* Request Preview Badge */}
       {form.priority && form.location && (
         <div style={{ margin:"0 12px 10px", padding:"12px 16px", background:priObj?.color+"18", border:`1px solid ${priObj?.color}44`, borderRadius:10, display:"flex", alignItems:"center", gap:12 }}>
           <div style={{ padding:"4px 12px", background:priObj?.color, color:"white", borderRadius:20, fontWeight:800, fontSize:12, flexShrink:0 }}>
@@ -1104,7 +1097,6 @@ function RmRequest({ onBack }) {
         </div>
       )}
 
-      {/* Actions */}
       <div style={{ margin:"0 12px", background:"white", borderRadius:10, padding:16, boxShadow:"0 1px 4px rgba(0,0,0,0.08)" }}>
         <div style={{ fontWeight:800, fontSize:13, color:GREEN, marginBottom:14, textTransform:"uppercase", letterSpacing:0.5 }}>Export & Submit</div>
         <button onClick={handlePrint} disabled={!isValid}
@@ -1125,6 +1117,153 @@ function RmRequest({ onBack }) {
           </div>
         )}
       </div>
+    </>
+  );
+}
+
+function RmCloseWorkOrder() {
+  const today = new Date().toISOString().split("T")[0];
+  const now = new Date().toTimeString().slice(0, 5);
+  const [form, setForm] = useState({ woNumber:"", location:"", closedBy:"", dateClosed:today, timeClosed:now, resolutionNotes:"", photo:null });
+  const [submitting, setSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState(null);
+  const [submitted, setSubmitted] = useState(false);
+  const fileRef = useRef();
+
+  const isValid = form.woNumber.trim() && form.location && form.closedBy.trim() && form.resolutionNotes.trim().length > 5;
+
+  const handleSubmit = async () => {
+    setSubmitting(true); setSubmitStatus(null);
+    try {
+      const payload = {
+        formType:"rm_close", woNumber:form.woNumber, location:form.location,
+        closedBy:form.closedBy, dateClosed:form.dateClosed, timeClosed:form.timeClosed,
+        resolutionNotes:form.resolutionNotes, photo:form.photo,
+        timestamp:new Date().toISOString()
+      };
+      const res = await fetch(WEBHOOK_URL,{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
+      setSubmitStatus(res.ok?"success":"error");
+      if (res.ok) setSubmitted(true);
+    } catch { setSubmitStatus("error"); }
+    setSubmitting(false);
+  };
+
+  return (
+    <>
+      {submitted && (
+        <div style={{ margin:"12px 12px 0", padding:"16px", background:YES_BG, border:`1px solid ${YES_BD}`, borderRadius:10, textAlign:"center" }}>
+          <div style={{ fontSize:28, marginBottom:6 }}>✅</div>
+          <div style={{ fontWeight:800, fontSize:15, color:"#2e7d32" }}>Work Order Closed!</div>
+          <div style={{ fontSize:12, color:"#555", marginTop:4 }}>WO# {form.woNumber} — {form.location}</div>
+          <button onClick={() => { setForm({ woNumber:"", location:"", closedBy:"", dateClosed:new Date().toISOString().split("T")[0], timeClosed:new Date().toTimeString().slice(0,5), resolutionNotes:"", photo:null }); setSubmitted(false); setSubmitStatus(null); }}
+            style={{ marginTop:12, padding:"8px 20px", background:GREEN, color:"white", border:"none", borderRadius:7, fontWeight:700, cursor:"pointer", fontSize:13 }}>
+            Close Another
+          </button>
+        </div>
+      )}
+
+      <div style={{ margin:"12px 12px 10px", background:"white", borderRadius:10, padding:16, boxShadow:"0 1px 4px rgba(0,0,0,0.08)" }}>
+        <div style={{ fontWeight:800, fontSize:13, color:GREEN, marginBottom:14, textTransform:"uppercase", letterSpacing:0.5 }}>Close Details</div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+          <div style={{ gridColumn:"1/-1" }}>
+            <label style={labelStyle}>Work Order # *</label>
+            <input style={inputStyle} placeholder="e.g. WO-2026-1234" value={form.woNumber} onChange={e=>setForm(p=>({...p,woNumber:e.target.value}))} />
+          </div>
+          <div>
+            <label style={labelStyle}>Location *</label>
+            <select style={inputStyle} value={form.location} onChange={e=>setForm(p=>({...p,location:e.target.value}))}><option value="">Select location…</option>{LOCATIONS.map(l=><option key={l} value={l}>{l}</option>)}</select>
+          </div>
+          <div>
+            <label style={labelStyle}>Closed By *</label>
+            <input style={inputStyle} placeholder="Your name" value={form.closedBy} onChange={e=>setForm(p=>({...p,closedBy:e.target.value}))} />
+          </div>
+          <div>
+            <label style={labelStyle}>Date Closed *</label>
+            <input type="date" style={inputStyle} value={form.dateClosed} onChange={e=>setForm(p=>({...p,dateClosed:e.target.value}))} />
+          </div>
+          <div>
+            <label style={labelStyle}>Time Closed *</label>
+            <input type="time" style={inputStyle} value={form.timeClosed} onChange={e=>setForm(p=>({...p,timeClosed:e.target.value}))} />
+          </div>
+        </div>
+      </div>
+
+      <div style={{ margin:"0 12px 10px", background:"white", borderRadius:10, padding:16, boxShadow:"0 1px 4px rgba(0,0,0,0.08)" }}>
+        <div style={{ fontWeight:800, fontSize:13, color:GREEN, marginBottom:14, textTransform:"uppercase", letterSpacing:0.5 }}>Resolution *</div>
+        <textarea value={form.resolutionNotes} onChange={e=>setForm(p=>({...p,resolutionNotes:e.target.value}))}
+          placeholder="Describe what was done to fix the issue — parts replaced, vendor used, steps taken..."
+          style={{ ...inputStyle, minHeight:120, resize:"vertical", lineHeight:1.6 }}
+        />
+        <div style={{ marginTop:12 }}>
+          <div style={{ fontWeight:700, fontSize:12, color:"#888", marginBottom:8, textTransform:"uppercase", letterSpacing:0.5 }}>Resolution Photo (optional)</div>
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            <button onClick={() => fileRef.current.click()}
+              style={{ padding:"8px 16px", border:"1px solid #ddd", borderRadius:7, background:"white", cursor:"pointer", color:"#555", fontSize:12, fontWeight:600 }}>
+              📷 {form.photo ? "Replace Photo" : "Add Photo"}
+            </button>
+            {form.photo && (
+              <>
+                <img src={form.photo} alt="resolution"
+                  style={{ height:50, width:70, objectFit:"cover", borderRadius:6, border:"1px solid #ddd" }} />
+                <button onClick={() => setForm(p=>({...p,photo:null}))}
+                  style={{ fontSize:12, color:R, background:"none", border:"none", cursor:"pointer" }}>✕ Remove</button>
+              </>
+            )}
+          </div>
+          <input ref={fileRef} type="file" accept="image/*" capture="environment"
+            style={{ display:"none" }}
+            onChange={e => {
+              const file = e.target.files[0]; if (!file) return;
+              const reader = new FileReader();
+              reader.onload = ev => setForm(p=>({...p,photo:ev.target.result}));
+              reader.readAsDataURL(file);
+              e.target.value = "";
+            }}
+          />
+        </div>
+      </div>
+
+      <div style={{ margin:"0 12px", background:"white", borderRadius:10, padding:16, boxShadow:"0 1px 4px rgba(0,0,0,0.08)" }}>
+        <div style={{ fontWeight:800, fontSize:13, color:GREEN, marginBottom:14, textTransform:"uppercase", letterSpacing:0.5 }}>Submit</div>
+        <SubmitButton onSubmit={handleSubmit} submitting={submitting} submitStatus={submitStatus} color={GREEN} />
+        {!isValid && (
+          <div style={{ marginTop:10, fontSize:11, color:"#aaa", textAlign:"center" }}>
+            Complete WO#, Location, Closed By, and Resolution to submit
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+function RmRequest({ onBack }) {
+  const [tab, setTab] = useState("new");
+
+  return (
+    <div style={{ fontFamily:"'Segoe UI',system-ui,sans-serif", background:"#f2f2f2", minHeight:"100vh", paddingBottom:40 }}>
+      <Header title="R&M Service Request" subtitle="Operations Hub" onBack={onBack} />
+
+      {/* Tab Toggle */}
+      <div style={{ display:"flex", margin:"12px 12px 0", background:"white", borderRadius:10, overflow:"hidden", boxShadow:"0 1px 4px rgba(0,0,0,0.08)" }}>
+        {[
+          { id:"new", label:"New Request", icon:"🔧" },
+          { id:"close", label:"Close Work Order", icon:"✅" },
+        ].map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)}
+            style={{
+              flex:1, padding:"14px 10px", border:"none", cursor:"pointer",
+              background: tab === t.id ? GREEN : "white",
+              color: tab === t.id ? "white" : "#666",
+              fontWeight:800, fontSize:13, transition:"all 0.15s",
+              borderBottom: tab === t.id ? `3px solid #1b5e20` : "3px solid transparent"
+            }}
+          >
+            {t.icon} {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "new" ? <RmNewRequest /> : <RmCloseWorkOrder />}
     </div>
   );
 }
