@@ -1497,14 +1497,15 @@ function Dashboard({ onBack }) {
 // ══════════════════════════════════════════════════════════════════════════════
 const ORANGE = "#E65100";
 
-function GuideAccordion({ title, emoji, children, defaultOpen }) {
+function GuideAccordion({ title, emoji, children, defaultOpen, accentColor }) {
+  const accent = accentColor || ORANGE;
   const [open, setOpen] = useState(!!defaultOpen);
   return (
     <div style={{ margin:"0 12px 10px", borderRadius:10, overflow:"hidden", boxShadow:"0 1px 4px rgba(0,0,0,0.08)" }}>
       <button onClick={() => setOpen(p => !p)} style={{
         width:"100%", display:"flex", alignItems:"center", justifyContent:"space-between",
         padding:"14px 16px", background:"white", border:"none",
-        borderLeft:`4px solid ${ORANGE}`, cursor:"pointer", textAlign:"left"
+        borderLeft:`4px solid ${accent}`, cursor:"pointer", textAlign:"left"
       }}>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           <span style={{ fontSize:20 }}>{emoji}</span>
@@ -1521,11 +1522,11 @@ function GuideAccordion({ title, emoji, children, defaultOpen }) {
   );
 }
 
-function GuideStep({ num, text }) {
+function GuideStep({ num, text, accentColor }) {
   return (
     <div style={{ display:"flex", gap:10, marginBottom:8 }}>
       <div style={{
-        width:24, height:24, borderRadius:12, background:ORANGE, color:"white",
+        width:24, height:24, borderRadius:12, background:accentColor||ORANGE, color:"white",
         fontSize:12, fontWeight:800, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, marginTop:2
       }}>{num}</div>
       <div>{text}</div>
@@ -1533,8 +1534,8 @@ function GuideStep({ num, text }) {
   );
 }
 
-function GuideLabel({ text }) {
-  return <div style={{ fontWeight:800, fontSize:12, color:ORANGE, textTransform:"uppercase", letterSpacing:0.5, marginTop:14, marginBottom:6 }}>{text}</div>;
+function GuideLabel({ text, accentColor }) {
+  return <div style={{ fontWeight:800, fontSize:12, color:accentColor||ORANGE, textTransform:"uppercase", letterSpacing:0.5, marginTop:14, marginBottom:6 }}>{text}</div>;
 }
 
 function HowToGuide({ onBack }) {
@@ -1681,6 +1682,22 @@ function HowToGuide({ onBack }) {
             <div style={{ fontSize:13, color:"#555" }}>{p.desc}</div>
           </div>
         ))}
+      </GuideAccordion>
+
+      {/* Close Work Order */}
+      <GuideAccordion title="Closing a Work Order" emoji="🔧" accentColor="#2e7d32">
+        <div style={{ marginBottom:8 }}>After a repair is completed, close the work order to log the resolution details and keep records up to date.</div>
+
+        <GuideLabel text="How to Close" accentColor="#2e7d32" />
+        <GuideStep num={1} text='Tap "R&M Request" on the home screen.' accentColor="#2e7d32" />
+        <GuideStep num={2} text='Tap the "Close Work Order" tab at the top.' accentColor="#2e7d32" />
+        <GuideStep num={3} text="Enter the Work Order # you are closing (e.g. WO-2026-4821)." accentColor="#2e7d32" />
+        <GuideStep num={4} text="Select your Location from the dropdown." accentColor="#2e7d32" />
+        <GuideStep num={5} text='Enter your name in "Closed By."' accentColor="#2e7d32" />
+        <GuideStep num={6} text="Confirm the Date and Time Closed." accentColor="#2e7d32" />
+        <GuideStep num={7} text="Describe what was done to resolve the issue in Resolution Notes." accentColor="#2e7d32" />
+        <GuideStep num={8} text="Attach a photo of the completed repair (optional but recommended)." accentColor="#2e7d32" />
+        <GuideStep num={9} text="Tap Submit — closure data is logged in Google Sheets automatically." accentColor="#2e7d32" />
       </GuideAccordion>
 
       <div style={{ margin:"12px 12px 0", padding:"14px 16px", background:"white", borderRadius:10, border:"1px dashed #ddd", textAlign:"center" }}>
