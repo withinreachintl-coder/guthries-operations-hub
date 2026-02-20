@@ -88,6 +88,14 @@ function HomeScreen({ onNav }) {
       color:"#2e7d32",
       accent:"#e8f5e9"
     },
+    {
+      id:"guide",
+      emoji:"📖",
+      title:"How-To Guide",
+      desc:"Learn how to use each form and the dashboard",
+      color:"#E65100",
+      accent:"#FFF3E0"
+    },
   ];
 
   return (
@@ -1346,6 +1354,206 @@ function Dashboard({ onBack }) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+//  HOW-TO GUIDE
+// ══════════════════════════════════════════════════════════════════════════════
+const ORANGE = "#E65100";
+
+function GuideAccordion({ title, emoji, children, defaultOpen }) {
+  const [open, setOpen] = useState(!!defaultOpen);
+  return (
+    <div style={{ margin:"0 12px 10px", borderRadius:10, overflow:"hidden", boxShadow:"0 1px 4px rgba(0,0,0,0.08)" }}>
+      <button onClick={() => setOpen(p => !p)} style={{
+        width:"100%", display:"flex", alignItems:"center", justifyContent:"space-between",
+        padding:"14px 16px", background:"white", border:"none",
+        borderLeft:`4px solid ${ORANGE}`, cursor:"pointer", textAlign:"left"
+      }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <span style={{ fontSize:20 }}>{emoji}</span>
+          <span style={{ fontWeight:800, fontSize:15, color:"#1a1a1a" }}>{title}</span>
+        </div>
+        <span style={{ color:"#aaa", fontSize:18 }}>{open ? "▼" : "▶"}</span>
+      </button>
+      {open && (
+        <div style={{ background:"#fafafa", padding:"14px 16px", fontSize:13, color:"#444", lineHeight:1.8 }}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GuideStep({ num, text }) {
+  return (
+    <div style={{ display:"flex", gap:10, marginBottom:8 }}>
+      <div style={{
+        width:24, height:24, borderRadius:12, background:ORANGE, color:"white",
+        fontSize:12, fontWeight:800, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, marginTop:2
+      }}>{num}</div>
+      <div>{text}</div>
+    </div>
+  );
+}
+
+function GuideLabel({ text }) {
+  return <div style={{ fontWeight:800, fontSize:12, color:ORANGE, textTransform:"uppercase", letterSpacing:0.5, marginTop:14, marginBottom:6 }}>{text}</div>;
+}
+
+function HowToGuide({ onBack }) {
+  return (
+    <div style={{ fontFamily:"'Segoe UI',system-ui,sans-serif", background:"#f2f2f2", minHeight:"100vh", paddingBottom:40 }}>
+      <Header title="How-To Guide" subtitle="Operations Hub" onBack={onBack} />
+
+      <div style={{ margin:"12px 12px 10px", padding:"14px 16px", background:"#FFF3E0", border:`1px solid #FFE0B2`, borderRadius:10 }}>
+        <div style={{ fontSize:13, color:"#E65100", fontWeight:600, lineHeight:1.6 }}>
+          📖 Welcome to the Guthrie's Operations Hub! Tap any section below to learn how it works.
+        </div>
+      </div>
+
+      {/* Getting Started */}
+      <GuideAccordion title="Getting Started" emoji="📱" defaultOpen>
+        <GuideLabel text="Add to Home Screen — iPhone (Safari)" />
+        <GuideStep num={1} text="Open this app in Safari (not Chrome)." />
+        <GuideStep num={2} text='Tap the Share button (square with arrow) at the bottom of the screen.' />
+        <GuideStep num={3} text='Scroll down and tap "Add to Home Screen."' />
+        <GuideStep num={4} text='Tap "Add" in the top-right corner. The app icon will appear on your home screen.' />
+
+        <GuideLabel text="Add to Home Screen — Android (Chrome)" />
+        <GuideStep num={1} text="Open this app in Chrome." />
+        <GuideStep num={2} text='Tap the three-dot menu (⋮) in the top-right corner.' />
+        <GuideStep num={3} text='Tap "Add to Home screen" or "Install app."' />
+        <GuideStep num={4} text='Tap "Add" to confirm. The app icon will appear on your home screen.' />
+
+        <div style={{ marginTop:12, padding:"10px 14px", background:"white", borderRadius:8, border:"1px solid #e0e0e0", fontSize:12, color:"#666", lineHeight:1.6 }}>
+          💡 <strong>Tip:</strong> Once added, the app opens full-screen like a native app — no browser bars!
+        </div>
+      </GuideAccordion>
+
+      {/* Dashboard */}
+      <GuideAccordion title="Dashboard" emoji="📊">
+        <div style={{ marginBottom:8 }}>The Dashboard shows real-time KPIs pulled from your Google Sheets data for both Restaurant Inspections and Loss Prevention Audits.</div>
+
+        <GuideLabel text="What You'll See" />
+        <div style={{ marginBottom:4 }}><strong>Avg Score</strong> — The average score % across all submissions (or filtered by location).</div>
+        <div style={{ marginBottom:4 }}><strong>Total</strong> — How many inspections or audits have been completed.</div>
+        <div style={{ marginBottom:4 }}><strong>Best Location</strong> — The location with the highest average score.</div>
+        <div style={{ marginBottom:4 }}><strong>Needs Work</strong> — The location with the lowest average score.</div>
+        <div style={{ marginBottom:8 }}><strong>Recent Trend</strong> — The last 10 submissions with date, location, and score.</div>
+
+        <GuideLabel text="Score Color Coding" />
+        <div style={{ display:"flex", gap:8, marginBottom:4 }}>
+          <span style={{ color:"#2e7d32", fontWeight:800 }}>● Green</span>
+          <span>— Inspections: 85%+ / LP Audits: 85%+</span>
+        </div>
+        <div style={{ display:"flex", gap:8, marginBottom:4 }}>
+          <span style={{ color:"#e65100", fontWeight:800 }}>● Orange</span>
+          <span>— Inspections: 70–84% / LP Audits: 60–84%</span>
+        </div>
+        <div style={{ display:"flex", gap:8, marginBottom:8 }}>
+          <span style={{ color:R, fontWeight:800 }}>● Red</span>
+          <span>— Below thresholds above</span>
+        </div>
+
+        <GuideLabel text="Location Filter" />
+        <div>Tap any location button at the top to filter all KPIs and trends to just that location. Tap "All" to see everything.</div>
+      </GuideAccordion>
+
+      {/* Restaurant Inspection */}
+      <GuideAccordion title="Restaurant Inspection" emoji="🍗">
+        <div style={{ marginBottom:8 }}>A comprehensive 659-point inspection covering 12 categories. Each item is scored — tap YES to earn points or NO to flag an issue.</div>
+
+        <GuideLabel text="How to Complete" />
+        <GuideStep num={1} text="Fill in the Inspection Details at the top (inspector name, location, date, etc.)." />
+        <GuideStep num={2} text="Expand each category section by tapping it." />
+        <GuideStep num={3} text='For each item, tap YES (earns points) or NO (zero points). Tap again to undo.' />
+        <GuideStep num={4} text="Add notes to any item for additional context." />
+        <GuideStep num={5} text='Tap "Add Photo" to attach a photo from your camera or gallery.' />
+        <GuideStep num={6} text='When finished, tap "Download / Print PDF" to save or print your report.' />
+        <GuideStep num={7} text='Tap "Submit to Google Sheets" to send the data automatically.' />
+
+        <GuideLabel text="12 Categories" />
+        {[
+          { emoji:"🏢", name:"Exterior", pts:8 },
+          { emoji:"🪑", name:"Dining Hall / Restrooms", pts:49 },
+          { emoji:"🧾", name:"Cashier Alley", pts:32 },
+          { emoji:"🍳", name:"Kitchen", pts:46 },
+          { emoji:"🧊", name:"Dry Storage / WIC / WIF", pts:60 },
+          { emoji:"🥗", name:"Prep", pts:76 },
+          { emoji:"🔥", name:"Cooking", pts:200 },
+          { emoji:"🧼", name:"Chemicals / Dish Area", pts:70 },
+          { emoji:"⭐", name:"Service", pts:9 },
+          { emoji:"👔", name:"Employee", pts:27 },
+          { emoji:"🍗", name:"Food Quality", pts:60 },
+          { emoji:"📋", name:"Misc", pts:22 },
+        ].map(c => (
+          <div key={c.name} style={{ display:"flex", justifyContent:"space-between", padding:"6px 0", borderBottom:"1px solid #eee" }}>
+            <span>{c.emoji} {c.name}</span>
+            <span style={{ fontWeight:700, color:"#888" }}>{c.pts} pts</span>
+          </div>
+        ))}
+        <div style={{ marginTop:8, fontWeight:800, color:R, textAlign:"right" }}>Total: 659 pts</div>
+      </GuideAccordion>
+
+      {/* Loss Prevention Audit */}
+      <GuideAccordion title="Loss Prevention Audit" emoji="🔒">
+        <div style={{ marginBottom:8 }}>A 100-point scored audit with 13 loss prevention checklist items. Each item has a specific point value based on its importance.</div>
+
+        <GuideLabel text="How to Complete" />
+        <GuideStep num={1} text="Fill in the Audit Details (auditor name, location, date, manager on duty)." />
+        <GuideStep num={2} text='For each item, tap YES to earn the points or NO to lose them.' />
+        <GuideStep num={3} text="Add notes or photos to document any issues found." />
+        <GuideStep num={4} text="Review the Summary section to see your Score, Deducted, and Remaining points." />
+        <GuideStep num={5} text='Tap "Download / Print PDF" or "Submit to Google Sheets" when done.' />
+
+        <GuideLabel text="Point Values" />
+        {LP_ITEMS.map(item => (
+          <div key={item.id} style={{ display:"flex", justifyContent:"space-between", padding:"6px 0", borderBottom:"1px solid #eee" }}>
+            <span style={{ flex:1, paddingRight:10 }}>{item.text}</span>
+            <span style={{ fontWeight:700, color:"#1565c0", flexShrink:0 }}>{item.pts} pts</span>
+          </div>
+        ))}
+        <div style={{ marginTop:8, fontWeight:800, color:"#1565c0", textAlign:"right" }}>Total: 100 pts</div>
+
+        <GuideLabel text="Score Thresholds" />
+        <div style={{ marginBottom:4 }}><span style={{ color:"#2e7d32", fontWeight:800 }}>85–100</span> — Excellent</div>
+        <div style={{ marginBottom:4 }}><span style={{ color:"#e65100", fontWeight:800 }}>60–84</span> — Needs Improvement</div>
+        <div><span style={{ color:R, fontWeight:800 }}>Below 60</span> — Critical</div>
+      </GuideAccordion>
+
+      {/* R&M Request */}
+      <GuideAccordion title="R&M Request" emoji="🔧">
+        <div style={{ marginBottom:8 }}>Submit a Repair & Maintenance service request. A unique work order number (WO#) is auto-generated for tracking.</div>
+
+        <GuideLabel text="How to Submit" />
+        <GuideStep num={1} text="Enter your name in the Submitted By field." />
+        <GuideStep num={2} text="Select your location from the dropdown." />
+        <GuideStep num={3} text="The date and WO# are auto-filled (WO# is read-only)." />
+        <GuideStep num={4} text="Select a priority level (see below)." />
+        <GuideStep num={5} text="Describe the issue in detail — what's broken, where it is, when it started." />
+        <GuideStep num={6} text="Optionally attach a photo of the issue." />
+        <GuideStep num={7} text='Tap "Download / Print PDF" to save a copy, or "Submit to Google Sheets" to send it.' />
+
+        <GuideLabel text="Priority Levels" />
+        {PRIORITIES.map(p => (
+          <div key={p.val} style={{ display:"flex", alignItems:"flex-start", gap:10, marginBottom:10 }}>
+            <div style={{
+              padding:"4px 10px", background:p.color, color:"white", borderRadius:16,
+              fontWeight:800, fontSize:11, flexShrink:0, marginTop:1
+            }}>{p.label}</div>
+            <div style={{ fontSize:13, color:"#555" }}>{p.desc}</div>
+          </div>
+        ))}
+      </GuideAccordion>
+
+      <div style={{ margin:"12px 12px 0", padding:"14px 16px", background:"white", borderRadius:10, border:"1px dashed #ddd", textAlign:"center" }}>
+        <div style={{ fontSize:12, color:"#aaa" }}>
+          Questions? Contact your area manager or IT support.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 //  ROOT APP
 // ══════════════════════════════════════════════════════════════════════════════
 export default function App() {
@@ -1355,5 +1563,6 @@ export default function App() {
   if (screen === "lp")         return <LpAudit             onBack={() => setScreen("home")} />;
   if (screen === "rm")         return <RmRequest           onBack={() => setScreen("home")} />;
   if (screen === "dashboard")  return <Dashboard           onBack={() => setScreen("home")} />;
+  if (screen === "guide")      return <HowToGuide          onBack={() => setScreen("home")} />;
   return <HomeScreen onNav={setScreen} />;
 }
