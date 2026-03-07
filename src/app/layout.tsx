@@ -5,6 +5,13 @@ export const metadata: Metadata = {
   title: "Guthrie's Operations Hub",
   description: "Operations management for Guthrie's Golden Fried Chicken Fingers",
   manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico" },
+    ],
+    apple: "/favicon.svg",
+  },
 };
 
 export const viewport: Viewport = {

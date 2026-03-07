@@ -81,14 +81,6 @@ function HomeScreen({ onNav }) {
       accent:"#e8f0fe"
     },
     {
-      id:"rm",
-      emoji:"🔧",
-      title:"R&M Request",
-      desc:"Repair & Maintenance service request",
-      color:"#2e7d32",
-      accent:"#e8f5e9"
-    },
-    {
       id:"guide",
       emoji:"📖",
       title:"How-To Guide",
@@ -324,7 +316,7 @@ const INSPECT_SECTIONS = [
     ]
   },
   {
-    id:"dryStorage", title:"Dry Storage / WIC / WIF", possible:60, emoji:"🧊",
+    id:"dryStorage", title:"Dry Storage / WIC / WIF", possible:55, emoji:"🧊",
     items:[
       { id:"ds1", pts:5, text:"Dry storage area clean, organized, and product stored 6 inches off floor" },
       { id:"ds2", pts:5, text:"FIFO (First In First Out) being practiced in all storage areas" },
@@ -337,7 +329,6 @@ const INSPECT_SECTIONS = [
       { id:"ds9", pts:5, text:"No expired product. Product rotation is up to date" },
       { id:"ds10",pts:5, text:"Chemicals stored separately from all food products" },
       { id:"ds11", pts:5, text:"Thermometers present and visible in all walk-ins" },
-      { id:"ds12", pts:5, text:"Ice machine cleaned and inside free of mold" },
     ]
   },
   {
@@ -424,13 +415,9 @@ const INSPECT_SECTIONS = [
     ]
   },
   {
-    id:"foodQuality", title:"Food Quality", possible:60, emoji:"🍗",
+    id:"foodQuality", title:"Food Quality", possible:40, emoji:"🍗",
     items:[
       { id:"fq1",  pts:5, text:"Chicken fingers — proper size, color, texture. Not overcooked or greasy" },
-      { id:"fq2",  pts:5, text:"Slaw — fresh within 24 hours, proper texture (long stringy, creamy), correct color and portion" },
-      { id:"fq3",  pts:5, text:"Tea — fresh, properly prepared per recipe, correct sweetness, properly labeled sweet/unsweet" },
-      { id:"fq4",  pts:5, text:"Using scale for French Fries — fry portions weighed to ensure consistency" },
-      { id:"fq5",  pts:5, text:"Production board — posted, up to date, and being followed for current shift" },
       { id:"fq6",  pts:5, text:"Dipping sauces at correct temperature and within expiration date" },
       { id:"fq7",  pts:5, text:"Bread fresh, proper texture and color. Correctly toasted per standard" },
       { id:"fq8",  pts:5, text:"French fries properly portioned, salted, and served at correct temperature" },
@@ -920,355 +907,6 @@ function LpAudit({ onBack }) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  FORM 3 — R&M REQUEST
-// ══════════════════════════════════════════════════════════════════════════════
-const GREEN = "#2e7d32";
-const PRIORITIES = [
-  { val:"low",       label:"Low",       color:"#1565c0", desc:"No immediate impact on operations" },
-  { val:"medium",    label:"Medium",    color:"#e65100", desc:"Minor impact, needs attention soon" },
-  { val:"high",      label:"High",      color:"#c62828", desc:"Significant impact on operations" },
-  { val:"emergency", label:"Emergency", color:"#6a1b9a", desc:"Immediate safety or operational risk" },
-];
-
-function generateRmPDF(form) {
-  const pri = PRIORITIES.find(p=>p.val===form.priority);
-  const photoHtml = form.photo ? `<img src="${form.photo}" style="max-width:300px;max-height:220px;border-radius:6px;border:1px solid #ddd;margin-top:10px;" />` : "";
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>R&M Request</title>
-  <style>body{font-family:'Segoe UI',sans-serif;margin:0;padding:20px;}
-  .field{margin-bottom:16px;} .label{font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;}
-  .value{font-size:14px;color:#222;padding:8px 12px;background:#f9f9f9;border-radius:6px;border-left:3px solid #2e7d32;}
-  </style></head><body>
-  <div style="text-align:center;border-bottom:3px solid #2e7d32;padding-bottom:16px;margin-bottom:24px;">
-    <div style="font-size:28px;font-weight:900;color:#C8102E;">Guthrie's</div>
-    <div style="font-size:9px;letter-spacing:3px;color:#888;text-transform:uppercase;">Golden Fried Chicken Fingers</div>
-    <div style="font-size:20px;font-weight:700;margin-top:4px;color:#2e7d32;">R&M Service Request</div>
-  </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
-    <div class="field"><div class="label">Location</div><div class="value">${form.location||"—"}</div></div>
-    <div class="field"><div class="label">Date</div><div class="value">${form.date||"—"}</div></div>
-    <div class="field"><div class="label">Work Order #</div><div class="value">${form.woNumber||"—"}</div></div>
-    <div class="field"><div class="label">Submitted By</div><div class="value">${form.submittedBy||"—"}</div></div>
-  </div>
-  <div class="field"><div class="label">Priority</div>
-    <div style="display:inline-block;padding:6px 16px;background:${pri?.color||"#333"};color:white;border-radius:20px;font-weight:800;font-size:13px;">${pri?.label||form.priority||"—"}</div>
-  </div>
-  <div class="field" style="margin-top:16px;"><div class="label">Issue to Resolve</div>
-    <div style="font-size:14px;color:#222;padding:14px;background:#f9f9f9;border-radius:8px;border-left:3px solid #2e7d32;line-height:1.7;white-space:pre-wrap;">${form.issue||"—"}</div>
-  </div>
-  ${form.photo ? `<div class="field"><div class="label">Photo</div>${photoHtml}</div>` : ""}
-  <div style="margin-top:24px;font-size:10px;color:#aaa;text-align:center;">Submitted: ${new Date().toLocaleString()}</div>
-  </body></html>`;
-}
-
-const generateWO = () => `WO-${new Date().getFullYear()}-${String(Math.floor(1000 + Math.random() * 9000))}`;
-
-function RmNewRequest() {
-  const today = new Date().toISOString().split("T")[0];
-  const [form, setForm] = useState({ submittedBy:"", location:"", date:today, woNumber:generateWO(), priority:"", issue:"", photo:null });
-  const [submitting, setSubmitting] = useState(false);
-  const [submitStatus, setSubmitStatus] = useState(null);
-  const [submitted, setSubmitted] = useState(false);
-  const fileRef = useRef();
-
-  const isValid = form.location && form.date && form.priority && form.issue.trim().length > 5;
-
-  const handlePrint = () => {
-    const html = generateRmPDF(form);
-    const win = window.open("","_blank"); win.document.write(html); win.document.close();
-    win.onload = () => win.print();
-  };
-
-  const handleSubmit = async () => {
-    setSubmitting(true); setSubmitStatus(null);
-    try {
-      const payload = { formType:"rm_request", ...form, timestamp:new Date().toISOString() };
-      const res = await fetch(WEBHOOK_URL,{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
-      setSubmitStatus(res.ok?"success":"error");
-      if (res.ok) setSubmitted(true);
-    } catch { setSubmitStatus("error"); }
-    setSubmitting(false);
-  };
-
-  const priObj = PRIORITIES.find(p=>p.val===form.priority);
-
-  return (
-    <>
-      {submitted && (
-        <div style={{ margin:"12px 12px 0", padding:"16px", background:YES_BG, border:`1px solid ${YES_BD}`, borderRadius:10, textAlign:"center" }}>
-          <div style={{ fontSize:28, marginBottom:6 }}>✅</div>
-          <div style={{ fontWeight:800, fontSize:15, color:"#2e7d32" }}>Request Submitted!</div>
-          <div style={{ fontSize:12, color:"#555", marginTop:4 }}>WO# {form.woNumber || "Pending"} — {form.location}</div>
-          <button onClick={() => { setForm({ submittedBy:"", location:"", date:new Date().toISOString().split("T")[0], woNumber:generateWO(), priority:"", issue:"", photo:null }); setSubmitted(false); setSubmitStatus(null); }}
-            style={{ marginTop:12, padding:"8px 20px", background:GREEN, color:"white", border:"none", borderRadius:7, fontWeight:700, cursor:"pointer", fontSize:13 }}>
-            New Request
-          </button>
-        </div>
-      )}
-
-      <div style={{ margin:"12px 12px 10px", background:"white", borderRadius:10, padding:16, boxShadow:"0 1px 4px rgba(0,0,0,0.08)" }}>
-        <div style={{ fontWeight:800, fontSize:13, color:GREEN, marginBottom:14, textTransform:"uppercase", letterSpacing:0.5 }}>Request Details</div>
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
-          <div style={{ gridColumn:"1/-1" }}>
-            <label style={labelStyle}>Submitted By *</label>
-            <input style={inputStyle} placeholder="Your name" value={form.submittedBy} onChange={e=>setForm(p=>({...p,submittedBy:e.target.value}))} />
-          </div>
-          <div>
-            <label style={labelStyle}>Location *</label>
-            <select style={inputStyle} value={form.location} onChange={e=>setForm(p=>({...p,location:e.target.value}))}><option value="">Select location…</option>{LOCATIONS.map(l=><option key={l} value={l}>{l}</option>)}</select>
-          </div>
-          <div>
-            <label style={labelStyle}>Date *</label>
-            <input type="date" style={inputStyle} value={form.date} onChange={e=>setForm(p=>({...p,date:e.target.value}))} />
-          </div>
-          <div style={{ gridColumn:"1/-1" }}>
-            <label style={labelStyle}>Work Order #</label>
-            <input style={{...inputStyle, background:"#f5f5f5", color:"#555"}} value={form.woNumber} readOnly />
-          </div>
-        </div>
-      </div>
-
-      <div style={{ margin:"0 12px 10px", background:"white", borderRadius:10, padding:16, boxShadow:"0 1px 4px rgba(0,0,0,0.08)" }}>
-        <div style={{ fontWeight:800, fontSize:13, color:GREEN, marginBottom:14, textTransform:"uppercase", letterSpacing:0.5 }}>Priority *</div>
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-          {PRIORITIES.map(p => (
-            <button key={p.val} onClick={() => setForm(prev=>({...prev,priority:p.val}))}
-              style={{
-                padding:"12px 10px", border:`2px solid ${form.priority===p.val ? p.color : "#e0e0e0"}`,
-                borderRadius:8, cursor:"pointer", textAlign:"left",
-                background: form.priority===p.val ? p.color : "white",
-                transition:"all 0.15s"
-              }}
-            >
-              <div style={{ fontWeight:800, fontSize:13, color: form.priority===p.val ? "white" : p.color }}>
-                {p.label}
-              </div>
-              <div style={{ fontSize:10, color: form.priority===p.val ? "rgba(255,255,255,0.8)" : "#aaa", marginTop:2, lineHeight:1.4 }}>
-                {p.desc}
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ margin:"0 12px 10px", background:"white", borderRadius:10, padding:16, boxShadow:"0 1px 4px rgba(0,0,0,0.08)" }}>
-        <div style={{ fontWeight:800, fontSize:13, color:GREEN, marginBottom:14, textTransform:"uppercase", letterSpacing:0.5 }}>Issue to Resolve *</div>
-        <textarea value={form.issue} onChange={e=>setForm(p=>({...p,issue:e.target.value}))}
-          placeholder="Describe the issue in detail — what is broken, where it is located, when it started, and any relevant context..."
-          style={{ ...inputStyle, minHeight:120, resize:"vertical", lineHeight:1.6 }}
-        />
-        <div style={{ marginTop:12 }}>
-          <div style={{ fontWeight:700, fontSize:12, color:"#888", marginBottom:8, textTransform:"uppercase", letterSpacing:0.5 }}>Photo (optional)</div>
-          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-            <button onClick={() => fileRef.current.click()}
-              style={{ padding:"8px 16px", border:"1px solid #ddd", borderRadius:7, background:"white", cursor:"pointer", color:"#555", fontSize:12, fontWeight:600 }}>
-              📷 {form.photo ? "Replace Photo" : "Add Photo"}
-            </button>
-            {form.photo && (
-              <>
-                <img src={form.photo} alt="issue"
-                  style={{ height:50, width:70, objectFit:"cover", borderRadius:6, border:"1px solid #ddd" }} />
-                <button onClick={() => setForm(p=>({...p,photo:null}))}
-                  style={{ fontSize:12, color:R, background:"none", border:"none", cursor:"pointer" }}>✕ Remove</button>
-              </>
-            )}
-          </div>
-          <input ref={fileRef} type="file" accept="image/*" capture="environment"
-            style={{ display:"none" }}
-            onChange={e => {
-              const file = e.target.files[0]; if (!file) return;
-              const reader = new FileReader();
-              reader.onload = ev => setForm(p=>({...p,photo:ev.target.result}));
-              reader.readAsDataURL(file);
-              e.target.value = "";
-            }}
-          />
-        </div>
-      </div>
-
-      {form.priority && form.location && (
-        <div style={{ margin:"0 12px 10px", padding:"12px 16px", background:priObj?.color+"18", border:`1px solid ${priObj?.color}44`, borderRadius:10, display:"flex", alignItems:"center", gap:12 }}>
-          <div style={{ padding:"4px 12px", background:priObj?.color, color:"white", borderRadius:20, fontWeight:800, fontSize:12, flexShrink:0 }}>
-            {priObj?.label}
-          </div>
-          <div>
-            <div style={{ fontWeight:700, fontSize:13, color:"#1a1a1a" }}>{form.location}</div>
-            <div style={{ fontSize:11, color:"#888" }}>{form.woNumber ? `WO# ${form.woNumber}` : "WO# pending"} · {form.date}</div>
-          </div>
-        </div>
-      )}
-
-      <div style={{ margin:"0 12px", background:"white", borderRadius:10, padding:16, boxShadow:"0 1px 4px rgba(0,0,0,0.08)" }}>
-        <div style={{ fontWeight:800, fontSize:13, color:GREEN, marginBottom:14, textTransform:"uppercase", letterSpacing:0.5 }}>Export & Submit</div>
-        <button onClick={handlePrint} disabled={!isValid}
-          style={{
-            width:"100%", padding:"13px", marginBottom:10,
-            background: isValid ? GREEN : "#ccc",
-            color:"white", border:"none", borderRadius:8, fontWeight:800, fontSize:15,
-            cursor: isValid ? "pointer" : "default",
-            boxShadow: isValid ? `0 3px 10px ${GREEN}55` : "none"
-          }}
-        >
-          📄 Download / Print PDF
-        </button>
-        <SubmitButton onSubmit={handleSubmit} submitting={submitting} submitStatus={submitStatus} color={GREEN} />
-        {!isValid && (
-          <div style={{ marginTop:10, fontSize:11, color:"#aaa", textAlign:"center" }}>
-            Complete Location, Priority, and Issue to enable export
-          </div>
-        )}
-      </div>
-    </>
-  );
-}
-
-function RmCloseWorkOrder() {
-  const today = new Date().toISOString().split("T")[0];
-  const now = new Date().toTimeString().slice(0, 5);
-  const [form, setForm] = useState({ woNumber:"", location:"", closedBy:"", dateClosed:today, timeClosed:now, resolutionNotes:"", photo:null });
-  const [submitting, setSubmitting] = useState(false);
-  const [submitStatus, setSubmitStatus] = useState(null);
-  const [submitted, setSubmitted] = useState(false);
-  const fileRef = useRef();
-
-  const isValid = form.woNumber.trim() && form.location && form.closedBy.trim() && form.resolutionNotes.trim().length > 5;
-
-  const handleSubmit = async () => {
-    setSubmitting(true); setSubmitStatus(null);
-    try {
-      const payload = {
-        formType:"rm_close", woNumber:form.woNumber, location:form.location,
-        closedBy:form.closedBy, dateClosed:form.dateClosed, timeClosed:form.timeClosed,
-        resolutionNotes:form.resolutionNotes, photo:form.photo,
-        timestamp:new Date().toISOString()
-      };
-      const res = await fetch(WEBHOOK_URL,{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
-      setSubmitStatus(res.ok?"success":"error");
-      if (res.ok) setSubmitted(true);
-    } catch { setSubmitStatus("error"); }
-    setSubmitting(false);
-  };
-
-  return (
-    <>
-      {submitted && (
-        <div style={{ margin:"12px 12px 0", padding:"16px", background:YES_BG, border:`1px solid ${YES_BD}`, borderRadius:10, textAlign:"center" }}>
-          <div style={{ fontSize:28, marginBottom:6 }}>✅</div>
-          <div style={{ fontWeight:800, fontSize:15, color:"#2e7d32" }}>Work Order Closed!</div>
-          <div style={{ fontSize:12, color:"#555", marginTop:4 }}>WO# {form.woNumber} — {form.location}</div>
-          <button onClick={() => { setForm({ woNumber:"", location:"", closedBy:"", dateClosed:new Date().toISOString().split("T")[0], timeClosed:new Date().toTimeString().slice(0,5), resolutionNotes:"", photo:null }); setSubmitted(false); setSubmitStatus(null); }}
-            style={{ marginTop:12, padding:"8px 20px", background:GREEN, color:"white", border:"none", borderRadius:7, fontWeight:700, cursor:"pointer", fontSize:13 }}>
-            Close Another
-          </button>
-        </div>
-      )}
-
-      <div style={{ margin:"12px 12px 10px", background:"white", borderRadius:10, padding:16, boxShadow:"0 1px 4px rgba(0,0,0,0.08)" }}>
-        <div style={{ fontWeight:800, fontSize:13, color:GREEN, marginBottom:14, textTransform:"uppercase", letterSpacing:0.5 }}>Close Details</div>
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
-          <div style={{ gridColumn:"1/-1" }}>
-            <label style={labelStyle}>Work Order # *</label>
-            <input style={inputStyle} placeholder="e.g. WO-2026-1234" value={form.woNumber} onChange={e=>setForm(p=>({...p,woNumber:e.target.value}))} />
-          </div>
-          <div>
-            <label style={labelStyle}>Location *</label>
-            <select style={inputStyle} value={form.location} onChange={e=>setForm(p=>({...p,location:e.target.value}))}><option value="">Select location…</option>{LOCATIONS.map(l=><option key={l} value={l}>{l}</option>)}</select>
-          </div>
-          <div>
-            <label style={labelStyle}>Closed By *</label>
-            <input style={inputStyle} placeholder="Your name" value={form.closedBy} onChange={e=>setForm(p=>({...p,closedBy:e.target.value}))} />
-          </div>
-          <div>
-            <label style={labelStyle}>Date Closed *</label>
-            <input type="date" style={inputStyle} value={form.dateClosed} onChange={e=>setForm(p=>({...p,dateClosed:e.target.value}))} />
-          </div>
-          <div>
-            <label style={labelStyle}>Time Closed *</label>
-            <input type="time" style={inputStyle} value={form.timeClosed} onChange={e=>setForm(p=>({...p,timeClosed:e.target.value}))} />
-          </div>
-        </div>
-      </div>
-
-      <div style={{ margin:"0 12px 10px", background:"white", borderRadius:10, padding:16, boxShadow:"0 1px 4px rgba(0,0,0,0.08)" }}>
-        <div style={{ fontWeight:800, fontSize:13, color:GREEN, marginBottom:14, textTransform:"uppercase", letterSpacing:0.5 }}>Resolution *</div>
-        <textarea value={form.resolutionNotes} onChange={e=>setForm(p=>({...p,resolutionNotes:e.target.value}))}
-          placeholder="Describe what was done to fix the issue — parts replaced, vendor used, steps taken..."
-          style={{ ...inputStyle, minHeight:120, resize:"vertical", lineHeight:1.6 }}
-        />
-        <div style={{ marginTop:12 }}>
-          <div style={{ fontWeight:700, fontSize:12, color:"#888", marginBottom:8, textTransform:"uppercase", letterSpacing:0.5 }}>Resolution Photo (optional)</div>
-          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-            <button onClick={() => fileRef.current.click()}
-              style={{ padding:"8px 16px", border:"1px solid #ddd", borderRadius:7, background:"white", cursor:"pointer", color:"#555", fontSize:12, fontWeight:600 }}>
-              📷 {form.photo ? "Replace Photo" : "Add Photo"}
-            </button>
-            {form.photo && (
-              <>
-                <img src={form.photo} alt="resolution"
-                  style={{ height:50, width:70, objectFit:"cover", borderRadius:6, border:"1px solid #ddd" }} />
-                <button onClick={() => setForm(p=>({...p,photo:null}))}
-                  style={{ fontSize:12, color:R, background:"none", border:"none", cursor:"pointer" }}>✕ Remove</button>
-              </>
-            )}
-          </div>
-          <input ref={fileRef} type="file" accept="image/*" capture="environment"
-            style={{ display:"none" }}
-            onChange={e => {
-              const file = e.target.files[0]; if (!file) return;
-              const reader = new FileReader();
-              reader.onload = ev => setForm(p=>({...p,photo:ev.target.result}));
-              reader.readAsDataURL(file);
-              e.target.value = "";
-            }}
-          />
-        </div>
-      </div>
-
-      <div style={{ margin:"0 12px", background:"white", borderRadius:10, padding:16, boxShadow:"0 1px 4px rgba(0,0,0,0.08)" }}>
-        <div style={{ fontWeight:800, fontSize:13, color:GREEN, marginBottom:14, textTransform:"uppercase", letterSpacing:0.5 }}>Submit</div>
-        <SubmitButton onSubmit={handleSubmit} submitting={submitting} submitStatus={submitStatus} color={GREEN} />
-        {!isValid && (
-          <div style={{ marginTop:10, fontSize:11, color:"#aaa", textAlign:"center" }}>
-            Complete WO#, Location, Closed By, and Resolution to submit
-          </div>
-        )}
-      </div>
-    </>
-  );
-}
-
-function RmRequest({ onBack }) {
-  const [tab, setTab] = useState("new");
-
-  return (
-    <div style={{ fontFamily:"'Segoe UI',system-ui,sans-serif", background:"#f2f2f2", minHeight:"100vh", paddingBottom:40 }}>
-      <Header title="R&M Service Request" subtitle="Operations Hub" onBack={onBack} />
-
-      {/* Tab Toggle */}
-      <div style={{ display:"flex", margin:"12px 12px 0", background:"white", borderRadius:10, overflow:"hidden", boxShadow:"0 1px 4px rgba(0,0,0,0.08)" }}>
-        {[
-          { id:"new", label:"New Request", icon:"🔧" },
-          { id:"close", label:"Close Work Order", icon:"✅" },
-        ].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            style={{
-              flex:1, padding:"14px 10px", border:"none", cursor:"pointer",
-              background: tab === t.id ? GREEN : "white",
-              color: tab === t.id ? "white" : "#666",
-              fontWeight:800, fontSize:13, transition:"all 0.15s",
-              borderBottom: tab === t.id ? `3px solid #1b5e20` : "3px solid transparent"
-            }}
-          >
-            {t.icon} {t.label}
-          </button>
-        ))}
-      </div>
-
-      {tab === "new" ? <RmNewRequest /> : <RmCloseWorkOrder />}
-    </div>
-  );
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
 //  FORM 4 — DASHBOARD
 // ══════════════════════════════════════════════════════════════════════════════
 const SHEET_ID = "1sDOlld_vsXQOamXWmV277jF-6Jl_XQGVU9d4gkcOov4";
@@ -1599,7 +1237,7 @@ function HowToGuide({ onBack }) {
 
       {/* Restaurant Inspection */}
       <GuideAccordion title="Restaurant Inspection" emoji="🍗">
-        <div style={{ marginBottom:8 }}>A comprehensive 659-point inspection covering 12 categories. Each item is scored — tap YES to earn points or NO to flag an issue.</div>
+        <div style={{ marginBottom:8 }}>A comprehensive 634-point inspection covering 12 categories. Each item is scored — tap YES to earn points or NO to flag an issue.</div>
 
         <GuideLabel text="How to Complete" />
         <GuideStep num={1} text="Fill in the Inspection Details at the top (inspector name, location, date, etc.)." />
@@ -1616,13 +1254,13 @@ function HowToGuide({ onBack }) {
           { emoji:"🪑", name:"Dining Hall / Restrooms", pts:49 },
           { emoji:"🧾", name:"Cashier Alley", pts:32 },
           { emoji:"🍳", name:"Kitchen", pts:46 },
-          { emoji:"🧊", name:"Dry Storage / WIC / WIF", pts:60 },
+          { emoji:"🧊", name:"Dry Storage / WIC / WIF", pts:55 },
           { emoji:"🥗", name:"Prep", pts:76 },
           { emoji:"🔥", name:"Cooking", pts:200 },
           { emoji:"🧼", name:"Chemicals / Dish Area", pts:70 },
           { emoji:"⭐", name:"Service", pts:9 },
           { emoji:"👔", name:"Employee", pts:27 },
-          { emoji:"🍗", name:"Food Quality", pts:60 },
+          { emoji:"🍗", name:"Food Quality", pts:40 },
           { emoji:"📋", name:"Misc", pts:22 },
         ].map(c => (
           <div key={c.name} style={{ display:"flex", justifyContent:"space-between", padding:"6px 0", borderBottom:"1px solid #eee" }}>
@@ -1630,7 +1268,7 @@ function HowToGuide({ onBack }) {
             <span style={{ fontWeight:700, color:"#888" }}>{c.pts} pts</span>
           </div>
         ))}
-        <div style={{ marginTop:8, fontWeight:800, color:R, textAlign:"right" }}>Total: 659 pts</div>
+        <div style={{ marginTop:8, fontWeight:800, color:R, textAlign:"right" }}>Total: 634 pts</div>
       </GuideAccordion>
 
       {/* Loss Prevention Audit */}
@@ -1659,47 +1297,6 @@ function HowToGuide({ onBack }) {
         <div><span style={{ color:R, fontWeight:800 }}>Below 60</span> — Critical</div>
       </GuideAccordion>
 
-      {/* R&M Request */}
-      <GuideAccordion title="R&M Request" emoji="🔧">
-        <div style={{ marginBottom:8 }}>Submit a Repair & Maintenance service request. A unique work order number (WO#) is auto-generated for tracking.</div>
-
-        <GuideLabel text="How to Submit" />
-        <GuideStep num={1} text="Enter your name in the Submitted By field." />
-        <GuideStep num={2} text="Select your location from the dropdown." />
-        <GuideStep num={3} text="The date and WO# are auto-filled (WO# is read-only)." />
-        <GuideStep num={4} text="Select a priority level (see below)." />
-        <GuideStep num={5} text="Describe the issue in detail — what's broken, where it is, when it started." />
-        <GuideStep num={6} text="Optionally attach a photo of the issue." />
-        <GuideStep num={7} text='Tap "Download / Print PDF" to save a copy, or "Submit to Google Sheets" to send it.' />
-
-        <GuideLabel text="Priority Levels" />
-        {PRIORITIES.map(p => (
-          <div key={p.val} style={{ display:"flex", alignItems:"flex-start", gap:10, marginBottom:10 }}>
-            <div style={{
-              padding:"4px 10px", background:p.color, color:"white", borderRadius:16,
-              fontWeight:800, fontSize:11, flexShrink:0, marginTop:1
-            }}>{p.label}</div>
-            <div style={{ fontSize:13, color:"#555" }}>{p.desc}</div>
-          </div>
-        ))}
-      </GuideAccordion>
-
-      {/* Close Work Order */}
-      <GuideAccordion title="Closing a Work Order" emoji="🔧" accentColor="#2e7d32">
-        <div style={{ marginBottom:8 }}>After a repair is completed, close the work order to log the resolution details and keep records up to date.</div>
-
-        <GuideLabel text="How to Close" accentColor="#2e7d32" />
-        <GuideStep num={1} text='Tap "R&M Request" on the home screen.' accentColor="#2e7d32" />
-        <GuideStep num={2} text='Tap the "Close Work Order" tab at the top.' accentColor="#2e7d32" />
-        <GuideStep num={3} text="Enter the Work Order # you are closing (e.g. WO-2026-4821)." accentColor="#2e7d32" />
-        <GuideStep num={4} text="Select your Location from the dropdown." accentColor="#2e7d32" />
-        <GuideStep num={5} text='Enter your name in "Closed By."' accentColor="#2e7d32" />
-        <GuideStep num={6} text="Confirm the Date and Time Closed." accentColor="#2e7d32" />
-        <GuideStep num={7} text="Describe what was done to resolve the issue in Resolution Notes." accentColor="#2e7d32" />
-        <GuideStep num={8} text="Attach a photo of the completed repair (optional but recommended)." accentColor="#2e7d32" />
-        <GuideStep num={9} text="Tap Submit — closure data is logged in Google Sheets automatically." accentColor="#2e7d32" />
-      </GuideAccordion>
-
       <div style={{ margin:"12px 12px 0", padding:"14px 16px", background:"white", borderRadius:10, border:"1px dashed #ddd", textAlign:"center" }}>
         <div style={{ fontSize:12, color:"#aaa" }}>
           Questions? Contact your area manager or IT support.
@@ -1717,7 +1314,6 @@ export default function App() {
 
   if (screen === "inspection") return <RestaurantInspection onBack={() => setScreen("home")} />;
   if (screen === "lp")         return <LpAudit             onBack={() => setScreen("home")} />;
-  if (screen === "rm")         return <RmRequest           onBack={() => setScreen("home")} />;
   if (screen === "dashboard")  return <Dashboard           onBack={() => setScreen("home")} />;
   if (screen === "guide")      return <HowToGuide          onBack={() => setScreen("home")} />;
   return <HomeScreen onNav={setScreen} />;
