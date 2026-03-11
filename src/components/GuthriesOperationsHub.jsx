@@ -147,8 +147,9 @@ function HomeScreen({ onNav }) {
 // ══════════════════════════════════════════════════════════════════════════════
 //  SHARED COMPONENTS
 // ══════════════════════════════════════════════════════════════════════════════
-function ItemRow({ item, ans, onAnswer, onNotes, onPhoto, showPts = true }) {
+function ItemRow({ item, ans, onAnswer, onNotes, onPhotos, showPts = true }) {
   const fileRef = useRef();
+  const photos = ans.photos || [];
   const bg = ans.answer === "yes" ? YES_BG : ans.answer === "no" ? NO_BG : "white";
   const bd = ans.answer === "yes" ? YES_BD : ans.answer === "no" ? NO_BD : "#e8e8e8";
 
@@ -188,7 +189,7 @@ function ItemRow({ item, ans, onAnswer, onNotes, onPhoto, showPts = true }) {
         style={{ marginTop:10, ...inputStyle, background:"rgba(255,255,255,0.7)" }}
       />
 
-      <div style={{ marginTop:8, display:"flex", alignItems:"center", gap:10 }}>
+      <div style={{ marginTop:8 }}>
         <button onClick={() => fileRef.current.click()}
           style={{
             fontSize:11, padding:"5px 12px", border:"1px solid #ddd",
@@ -196,24 +197,41 @@ function ItemRow({ item, ans, onAnswer, onNotes, onPhoto, showPts = true }) {
             display:"flex", alignItems:"center", gap:5
           }}
         >
-          📷 {ans.photo ? "Replace Photo" : "Add Photo"}
+          📷 Add Photo{photos.length > 0 ? ` (${photos.length})` : ""}
         </button>
-        {ans.photo && (
-          <>
-            <img src={ans.photo} alt="inspection"
-              style={{ height:40, width:56, objectFit:"cover", borderRadius:5, border:"1px solid #ddd" }} />
-            <button onClick={() => onPhoto(null)}
-              style={{ fontSize:11, color:R, background:"none", border:"none", cursor:"pointer" }}>✕</button>
-          </>
+        {photos.length > 0 && (
+          <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginTop:8 }}>
+            {photos.map((photo, idx) => (
+              <div key={idx} style={{ position:"relative" }}>
+                <img src={photo} alt={`photo ${idx+1}`}
+                  style={{ height:48, width:64, objectFit:"cover", borderRadius:5, border:"1px solid #ddd" }} />
+                <button onClick={() => onPhotos(photos.filter((_, i) => i !== idx))}
+                  style={{
+                    position:"absolute", top:-6, right:-6, fontSize:10, color:"white",
+                    background:R, border:"none", cursor:"pointer", borderRadius:"50%",
+                    width:18, height:18, display:"flex", alignItems:"center", justifyContent:"center",
+                    lineHeight:1, padding:0
+                  }}>✕</button>
+              </div>
+            ))}
+          </div>
         )}
       </div>
-      <input ref={fileRef} type="file" accept="image/*" capture="environment"
+      <input ref={fileRef} type="file" accept="image/*" multiple
         style={{ display:"none" }}
         onChange={e => {
-          const file = e.target.files[0]; if (!file) return;
-          const reader = new FileReader();
-          reader.onload = ev => onPhoto(ev.target.result);
-          reader.readAsDataURL(file);
+          const files = Array.from(e.target.files); if (!files.length) return;
+          let newPhotos = [...photos];
+          let loaded = 0;
+          files.forEach(file => {
+            const reader = new FileReader();
+            reader.onload = ev => {
+              newPhotos = [...newPhotos, ev.target.result];
+              loaded++;
+              if (loaded === files.length) onPhotos(newPhotos);
+            };
+            reader.readAsDataURL(file);
+          });
           e.target.value = "";
         }}
       />
@@ -299,7 +317,7 @@ const INSPECT_SECTIONS = [
     ]
   },
   {
-    id:"kitchen", title:"Kitchen", possible:46, emoji:"🍳",
+    id:"kitchen", title:"Kitchen", possible:42, emoji:"🍳",
     items:[
       { id:"k1",  pts:4, text:"Kitchen clean and organized. All surfaces wiped down" },
       { id:"k2",  pts:4, text:"Floors clean, dry, and free of debris and grease buildup" },
@@ -309,7 +327,6 @@ const INSPECT_SECTIONS = [
       { id:"k6",  pts:4, text:"Hand washing station accessible, stocked, and being used properly" },
       { id:"k7",  pts:4, text:"Proper glove usage and hand washing procedures being followed" },
       { id:"k8",  pts:4, text:"No cross contamination. Raw and cooked products properly separated" },
-      { id:"k9",  pts:4, text:"Temperature logs current and properly documented" },
       { id:"k10", pts:4, text:"All food products properly labeled and dated" },
       { id:"k11", pts:3, text:"Trash cans clean, lined, and not overflowing" },
       { id:"k12", pts:3, text:"Pest control — no signs of pest activity" },
@@ -354,7 +371,7 @@ const INSPECT_SECTIONS = [
     ]
   },
   {
-    id:"cooking", title:"Cooking", possible:200, emoji:"🔥",
+    id:"cooking", title:"Cooking", possible:185, emoji:"🔥",
     items:[
       { id:"co1",  pts:15, text:"Oil quality meets standard. Oil properly filtered and changed on schedule" },
       { id:"co2",  pts:15, text:"Fry baskets clean and in good condition. Proper basket usage followed" },
@@ -363,9 +380,8 @@ const INSPECT_SECTIONS = [
       { id:"co5",  pts:15, text:"Chicken fingers cooked to proper internal temperature (165°F minimum)" },
       { id:"co6",  pts:15, text:"Chicken not overcooked or undercooked. Proper color and texture" },
       { id:"co7",  pts:15, text:"Products not held beyond hold time. Hold times properly documented" },
-      { id:"co8",  pts:15, text:"Hot holding equipment at proper temperature (140°F or above)" },
       { id:"co9",  pts:15, text:"Fry cook properly uniformed and following all safety procedures" },
-      { id:"co10", pts:15, text:"Waste tracking log current and accurate" },
+      { id:"co16", pts:15, text:"If latest Food Cost was higher than 38%, is the location using a waste log?" },
       { id:"co11", pts:10, text:"Product not cross contaminated in fryer. Allergen procedures followed" },
       { id:"co12", pts:10, text:"Fry station organized, clean, and free of grease buildup during service" },
       { id:"co13", pts:10, text:"Draining and seasoning procedures followed per recipe standard" },
@@ -374,7 +390,7 @@ const INSPECT_SECTIONS = [
     ]
   },
   {
-    id:"chemicals", title:"Chemicals / Dish Area", possible:70, emoji:"🧼",
+    id:"chemicals", title:"Chemicals / Dish Area", possible:65, emoji:"🧼",
     items:[
       { id:"ch1",  pts:5, text:"All chemicals properly labeled with concentration level identified" },
       { id:"ch2",  pts:5, text:"Sanitizer buckets properly mixed, tested, and changed every 2 hours" },
@@ -382,7 +398,6 @@ const INSPECT_SECTIONS = [
       { id:"ch4",  pts:5, text:"Dishes properly washed, rinsed, and sanitized. Air dried — not towel dried" },
       { id:"ch5",  pts:5, text:"Chemical storage organized, labeled, and stored away from food products" },
       { id:"ch6",  pts:5, text:"SDS (Safety Data Sheets) accessible and current for all chemicals" },
-      { id:"ch7",  pts:5, text:"Dish machine clean and functioning properly. Temperature log current" },
       { id:"ch8",  pts:5, text:"Dish area clean and organized. Drains clean and flowing properly" },
       { id:"ch9",  pts:5, text:"Clean dishes stored in proper location, covered, and protected" },
       { id:"ch10", pts:5, text:"Mops, brooms, and cleaning supplies clean and properly stored" },
@@ -445,7 +460,7 @@ const TOTAL_POSSIBLE = INSPECT_SECTIONS.reduce((s,sec) => s + sec.possible, 0);
 
 function inspectInitAnswers() {
   const a = {};
-  INSPECT_SECTIONS.forEach(s => s.items.forEach(item => { a[item.id] = { answer:null, notes:"", photo:null }; }));
+  INSPECT_SECTIONS.forEach(s => s.items.forEach(item => { a[item.id] = { answer:null, notes:"", photos:[] }; }));
   return a;
 }
 
@@ -455,22 +470,28 @@ function generateInspectPDF(info, answers) {
   const pct = ((earned/TOTAL_POSSIBLE)*100).toFixed(1);
   const rows = INSPECT_SECTIONS.map(sec => {
     const secE = sec.items.reduce((s,item) => s + (answers[item.id]?.answer==="yes" ? item.pts : 0), 0);
-    const itemRows = sec.items.map(item => {
+    const sortedItems = [...sec.items].sort((a,b) => {
+      const order = { no:0, null:1, yes:2 };
+      const aVal = order[answers[a.id]?.answer] ?? 1;
+      const bVal = order[answers[b.id]?.answer] ?? 1;
+      return aVal - bVal;
+    });
+    const itemRows = sortedItems.map(item => {
       const ans = answers[item.id];
       const bg = ans?.answer==="yes" ? "#e8f5e9" : ans?.answer==="no" ? "#ffebee" : "white";
-      const photoHtml = ans?.photo ? `<img src="${ans.photo}" style="max-width:80px;max-height:60px;border-radius:4px;" />` : "";
+      const photosHtml = (ans?.photos||[]).map(p => `<img src="${p}" style="max-width:80px;max-height:60px;border-radius:4px;margin:2px;" />`).join("");
       return `<tr style="background:${bg};border-bottom:1px solid #eee;">
         <td style="padding:6px 8px;font-size:11px;">${item.text}</td>
         <td style="padding:6px;text-align:center;font-size:11px;font-weight:700;">${item.pts}</td>
         <td style="padding:6px;text-align:center;font-size:11px;font-weight:700;">${ans?.answer ? ans.answer.toUpperCase() : "—"}</td>
         <td style="padding:6px;font-size:10px;color:#555;">${ans?.notes||""}</td>
-        <td style="padding:6px;">${photoHtml}</td>
+        <td style="padding:6px;">${photosHtml}</td>
       </tr>`;
     }).join("");
     return `<tr><td colspan="5" style="background:#C8102E;color:white;padding:8px 10px;font-weight:700;font-size:13px;">${sec.emoji} ${sec.title} — ${secE}/${sec.possible} pts</td></tr>
       <tr style="background:#f9f9f9;font-size:10px;font-weight:700;color:#777;">
         <td style="padding:4px 8px;">ITEM</td><td style="padding:4px;text-align:center;">PTS</td>
-        <td style="padding:4px;text-align:center;">Y/N</td><td style="padding:4px;">NOTES</td><td style="padding:4px;">PHOTO</td>
+        <td style="padding:4px;text-align:center;">Y/N</td><td style="padding:4px;">NOTES</td><td style="padding:4px;">PHOTOS</td>
       </tr>${itemRows}`;
   }).join("");
   const scoreRows = INSPECT_SECTIONS.map(sec => {
@@ -499,6 +520,85 @@ function generateInspectPDF(info, answers) {
     <td style="padding:4px 10px;"><b>Store Manager:</b> ${info.storeManager}</td>
     <td style="padding:4px 10px;"><b>Health Inspection:</b> ${info.currentHealthInspection}</td>
     <td style="padding:4px 10px;"><b>Previous Score:</b> ${info.previousInspectionScore}</td>
+  </tr><tr>
+    <td style="padding:4px 10px;"><b>Last Week's Food Cost:</b> ${info.lastWeekFC}</td>
+    <td colspan="2"></td>
+  </tr></table>
+  <div style="text-align:center;background:#C8102E;color:white;padding:12px;border-radius:6px;margin-bottom:20px;font-size:22px;font-weight:900;">
+    TOTAL SCORE: ${earned} / ${TOTAL_POSSIBLE} — ${pct}%
+  </div>
+  <table style="margin-bottom:24px;">${rows}</table>
+  <div style="font-size:16px;font-weight:700;margin-bottom:8px;color:#C8102E;">Score Card</div>
+  <table style="max-width:400px;">
+    <tr style="background:#C8102E;color:white;font-size:11px;font-weight:700;">
+      <td style="padding:6px 10px;">CATEGORY</td><td style="padding:6px;text-align:center;">EARNED</td><td style="padding:6px;text-align:center;">POSSIBLE</td>
+    </tr>${scoreRows}
+    <tr style="background:#333;color:white;font-weight:700;">
+      <td style="padding:8px 10px;">TOTAL</td>
+      <td style="padding:8px;text-align:center;color:#ffcc00;">${earned}</td>
+      <td style="padding:8px;text-align:center;">${TOTAL_POSSIBLE}</td>
+    </tr>
+  </table></body></html>`;
+}
+
+function generateInspectEmail(info, answers) {
+  const earned = INSPECT_SECTIONS.reduce((sum,s) =>
+    s.items.reduce((is,item) => is + (answers[item.id]?.answer==="yes" ? item.pts : 0), sum), 0);
+  const pct = ((earned/TOTAL_POSSIBLE)*100).toFixed(1);
+  const rows = INSPECT_SECTIONS.map(sec => {
+    const secE = sec.items.reduce((s,item) => s + (answers[item.id]?.answer==="yes" ? item.pts : 0), 0);
+    const sortedItems = [...sec.items].sort((a,b) => {
+      const order = { no:0, null:1, yes:2 };
+      return (order[answers[a.id]?.answer] ?? 1) - (order[answers[b.id]?.answer] ?? 1);
+    });
+    const itemRows = sortedItems.map(item => {
+      const ans = answers[item.id];
+      const bg = ans?.answer==="yes" ? "#e8f5e9" : ans?.answer==="no" ? "#ffebee" : "white";
+      const photoCount = (ans?.photos||[]).length;
+      const photoText = photoCount > 0 ? `📷 ${photoCount} photo${photoCount>1?"s":""}` : "";
+      return `<tr style="background:${bg};border-bottom:1px solid #eee;">
+        <td style="padding:6px 8px;font-size:11px;">${item.text}</td>
+        <td style="padding:6px;text-align:center;font-size:11px;font-weight:700;">${item.pts}</td>
+        <td style="padding:6px;text-align:center;font-size:11px;font-weight:700;">${ans?.answer ? ans.answer.toUpperCase() : "—"}</td>
+        <td style="padding:6px;font-size:10px;color:#555;">${ans?.notes||""}</td>
+        <td style="padding:6px;font-size:10px;color:#1565c0;">${photoText}</td>
+      </tr>`;
+    }).join("");
+    return `<tr><td colspan="5" style="background:#C8102E;color:white;padding:8px 10px;font-weight:700;font-size:13px;">${sec.emoji} ${sec.title} — ${secE}/${sec.possible} pts</td></tr>
+      <tr style="background:#f9f9f9;font-size:10px;font-weight:700;color:#777;">
+        <td style="padding:4px 8px;">ITEM</td><td style="padding:4px;text-align:center;">PTS</td>
+        <td style="padding:4px;text-align:center;">Y/N</td><td style="padding:4px;">NOTES</td><td style="padding:4px;">PHOTOS</td>
+      </tr>${itemRows}`;
+  }).join("");
+  const scoreRows = INSPECT_SECTIONS.map(sec => {
+    const e = sec.items.reduce((s,item) => s+(answers[item.id]?.answer==="yes"?item.pts:0),0);
+    return `<tr style="border-bottom:1px solid #eee;"><td style="padding:6px 10px;font-size:12px;">${sec.title}</td>
+      <td style="padding:6px;text-align:center;font-weight:700;color:#C8102E;">${e}</td>
+      <td style="padding:6px;text-align:center;color:#666;">${sec.possible}</td></tr>`;
+  }).join("");
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Guthrie's Inspection</title>
+  <style>body{font-family:'Segoe UI',sans-serif;margin:0;padding:20px;}table{width:100%;border-collapse:collapse;}</style>
+  </head><body>
+  <div style="text-align:center;border-bottom:3px solid #C8102E;padding-bottom:16px;margin-bottom:20px;">
+    <div style="font-size:28px;font-weight:900;color:#C8102E;">Guthrie's</div>
+    <div style="font-size:9px;letter-spacing:3px;color:#888;text-transform:uppercase;">Golden Fried Chicken Fingers</div>
+    <div style="font-size:20px;font-weight:700;margin-top:4px;">Restaurant Inspection Report</div>
+  </div>
+  <table style="margin-bottom:16px;font-size:12px;"><tr>
+    <td style="padding:4px 10px;"><b>Inspector:</b> ${info.inspectorName}</td>
+    <td style="padding:4px 10px;"><b>Location:</b> ${info.location}</td>
+    <td style="padding:4px 10px;"><b>Date:</b> ${info.date}</td>
+  </tr><tr>
+    <td style="padding:4px 10px;"><b>Start:</b> ${info.startTime}</td>
+    <td style="padding:4px 10px;"><b>End:</b> ${info.endTime}</td>
+    <td style="padding:4px 10px;"><b>Person in Charge:</b> ${info.personInCharge}</td>
+  </tr><tr>
+    <td style="padding:4px 10px;"><b>Store Manager:</b> ${info.storeManager}</td>
+    <td style="padding:4px 10px;"><b>Health Inspection:</b> ${info.currentHealthInspection}</td>
+    <td style="padding:4px 10px;"><b>Previous Score:</b> ${info.previousInspectionScore}</td>
+  </tr><tr>
+    <td style="padding:4px 10px;"><b>Last Week's Food Cost:</b> ${info.lastWeekFC}</td>
+    <td colspan="2"></td>
   </tr></table>
   <div style="text-align:center;background:#C8102E;color:white;padding:12px;border-radius:6px;margin-bottom:20px;font-size:22px;font-weight:900;">
     TOTAL SCORE: ${earned} / ${TOTAL_POSSIBLE} — ${pct}%
@@ -551,7 +651,7 @@ function InspectionSectionCard({ section, answers, setAnswer, collapsed, onToggl
             <ItemRow key={item.id} item={item} ans={answers[item.id]}
               onAnswer={v => setAnswer(item.id,"answer",v)}
               onNotes={v  => setAnswer(item.id,"notes",v)}
-              onPhoto={v  => setAnswer(item.id,"photo",v)}
+              onPhotos={v  => setAnswer(item.id,"photos",v)}
             />
           ))}
         </div>
@@ -564,7 +664,7 @@ function RestaurantInspection({ onBack }) {
   const today = new Date().toISOString().split("T")[0];
   const [info, setInfo] = useState({
     inspectorName:"", location:"", date:today, startTime:"", endTime:"",
-    personInCharge:"", storeManager:"", currentHealthInspection:"", previousInspectionScore:""
+    personInCharge:"", storeManager:"", currentHealthInspection:"", previousInspectionScore:"", lastWeekFC:""
   });
   const [answers, setAnswersState] = useState(inspectInitAnswers);
   const [collapsed, setCollapsed] = useState(Object.fromEntries(INSPECT_SECTIONS.map(s=>[s.id,true])));
@@ -588,12 +688,13 @@ function RestaurantInspection({ onBack }) {
   const handleSubmit = async () => {
     setSubmitting(true); setSubmitStatus(null);
     try {
+      const htmlReport = generateInspectEmail(info, answers);
       const payload = { formType:"restaurant_inspection", ...info, totalEarned, totalPossible:TOTAL_POSSIBLE,
-        percentage:pct.toFixed(1), timestamp:new Date().toISOString(),
+        percentage:pct.toFixed(1), timestamp:new Date().toISOString(), htmlReport,
         sections: INSPECT_SECTIONS.map(s=>({ title:s.title,
           earned:s.items.reduce((sum,item)=>sum+(answers[item.id]?.answer==="yes"?item.pts:0),0),
           possible:s.possible, items:s.items.map(item=>({ text:item.text, pts:item.pts,
-            answer:answers[item.id]?.answer, notes:answers[item.id]?.notes, photo:answers[item.id]?.photo }))
+            answer:answers[item.id]?.answer, notes:answers[item.id]?.notes, photos:answers[item.id]?.photos||[] }))
         }))};
       const res = await fetch(WEBHOOK_URL,{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
       setSubmitStatus(res.ok?"success":"error");
@@ -640,6 +741,7 @@ function RestaurantInspection({ onBack }) {
           <div><label style={labelStyle}>Store Manager *</label><input style={inputStyle} placeholder="Name" value={info.storeManager} onChange={e=>setInfo(p=>({...p,storeManager:e.target.value}))} /></div>
           <div><label style={labelStyle}>Current Health Inspection *</label><input style={inputStyle} placeholder="Score / Grade" value={info.currentHealthInspection} onChange={e=>setInfo(p=>({...p,currentHealthInspection:e.target.value}))} /></div>
           <div><label style={labelStyle}>Previous Inspection Score *</label><input style={inputStyle} placeholder="Score" value={info.previousInspectionScore} onChange={e=>setInfo(p=>({...p,previousInspectionScore:e.target.value}))} /></div>
+          <div><label style={labelStyle}>Last Week's Food Cost *</label><input style={inputStyle} placeholder="e.g. 32.5%" value={info.lastWeekFC} onChange={e=>setInfo(p=>({...p,lastWeekFC:e.target.value}))} /></div>
         </div>
       </div>
 
@@ -729,23 +831,29 @@ const BLUE_LIGHT = "#e8f0fe";
 
 function lpInitAnswers() {
   const a = {};
-  LP_ITEMS.forEach(item => { a[item.id] = { answer:null, notes:"", photo:null }; });
+  LP_ITEMS.forEach(item => { a[item.id] = { answer:null, notes:"", photos:[] }; });
   return a;
 }
 
 function generateLpPDF(info, answers) {
   const totalEarned = LP_ITEMS.reduce((sum, item) => sum + (answers[item.id]?.answer === "yes" ? item.pts : 0), 0);
   const pct = ((totalEarned/100)*100).toFixed(1);
-  const rows = LP_ITEMS.map(item => {
+  const sortedLpItems = [...LP_ITEMS].sort((a,b) => {
+    const order = { no:0, null:1, yes:2 };
+    const aVal = order[answers[a.id]?.answer] ?? 1;
+    const bVal = order[answers[b.id]?.answer] ?? 1;
+    return aVal - bVal;
+  });
+  const rows = sortedLpItems.map(item => {
     const ans = answers[item.id];
     const bg = ans?.answer==="yes"?"#e8f5e9":ans?.answer==="no"?"#ffebee":"white";
-    const photoHtml = ans?.photo ? `<img src="${ans.photo}" style="max-width:80px;max-height:60px;border-radius:4px;" />` : "";
+    const photosHtml = (ans?.photos||[]).map(p => `<img src="${p}" style="max-width:80px;max-height:60px;border-radius:4px;margin:2px;" />`).join("");
     return `<tr style="background:${bg};border-bottom:1px solid #eee;">
       <td style="padding:8px;font-size:12px;">${item.text}</td>
       <td style="padding:8px;text-align:center;font-weight:700;font-size:12px;">${item.pts}</td>
       <td style="padding:8px;text-align:center;font-weight:700;font-size:12px;">${ans?.answer?ans.answer.toUpperCase():"—"}</td>
       <td style="padding:8px;font-size:11px;color:#555;">${ans?.notes||""}</td>
-      <td style="padding:8px;">${photoHtml}</td>
+      <td style="padding:8px;">${photosHtml}</td>
     </tr>`;
   }).join("");
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Guthrie's Loss Prevention Audit</title>
@@ -774,7 +882,60 @@ function generateLpPDF(info, answers) {
       <td style="padding:6px;text-align:center;">PTS</td>
       <td style="padding:6px;text-align:center;">YES / NO</td>
       <td style="padding:6px;">NOTES</td>
-      <td style="padding:6px;">PHOTO</td>
+      <td style="padding:6px;">PHOTOS</td>
+    </tr>
+    ${rows}
+  </table>
+  </body></html>`;
+}
+
+function generateLpEmail(info, answers) {
+  const totalEarned = LP_ITEMS.reduce((sum, item) => sum + (answers[item.id]?.answer === "yes" ? item.pts : 0), 0);
+  const pct = ((totalEarned/100)*100).toFixed(1);
+  const sortedLpItems = [...LP_ITEMS].sort((a,b) => {
+    const order = { no:0, null:1, yes:2 };
+    return (order[answers[a.id]?.answer] ?? 1) - (order[answers[b.id]?.answer] ?? 1);
+  });
+  const rows = sortedLpItems.map(item => {
+    const ans = answers[item.id];
+    const bg = ans?.answer==="yes"?"#e8f5e9":ans?.answer==="no"?"#ffebee":"white";
+    const photoCount = (ans?.photos||[]).length;
+    const photoText = photoCount > 0 ? `📷 ${photoCount} photo${photoCount>1?"s":""}` : "";
+    return `<tr style="background:${bg};border-bottom:1px solid #eee;">
+      <td style="padding:8px;font-size:12px;">${item.text}</td>
+      <td style="padding:8px;text-align:center;font-weight:700;font-size:12px;">${item.pts}</td>
+      <td style="padding:8px;text-align:center;font-weight:700;font-size:12px;">${ans?.answer?ans.answer.toUpperCase():"—"}</td>
+      <td style="padding:8px;font-size:11px;color:#555;">${ans?.notes||""}</td>
+      <td style="padding:8px;font-size:10px;color:#1565c0;">${photoText}</td>
+    </tr>`;
+  }).join("");
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Guthrie's Loss Prevention Audit</title>
+  <style>body{font-family:'Segoe UI',sans-serif;margin:0;padding:20px;}table{width:100%;border-collapse:collapse;}</style>
+  </head><body>
+  <div style="text-align:center;border-bottom:3px solid #1565c0;padding-bottom:16px;margin-bottom:20px;">
+    <div style="font-size:28px;font-weight:900;color:#C8102E;">Guthrie's</div>
+    <div style="font-size:9px;letter-spacing:3px;color:#888;text-transform:uppercase;">Golden Fried Chicken Fingers</div>
+    <div style="font-size:20px;font-weight:700;margin-top:4px;color:#1565c0;">Loss Prevention Audit Report</div>
+  </div>
+  <table style="margin-bottom:16px;font-size:12px;"><tr>
+    <td style="padding:4px 10px;"><b>Auditor:</b> ${info.auditorName}</td>
+    <td style="padding:4px 10px;"><b>Location:</b> ${info.location}</td>
+    <td style="padding:4px 10px;"><b>Date:</b> ${info.date}</td>
+  </tr><tr>
+    <td style="padding:4px 10px;"><b>Manager on Duty:</b> ${info.managerOnDuty}</td>
+    <td style="padding:4px 10px;"><b>Start Time:</b> ${info.startTime}</td>
+    <td style="padding:4px 10px;"><b>End Time:</b> ${info.endTime}</td>
+  </tr></table>
+  <div style="text-align:center;background:#1565c0;color:white;padding:12px;border-radius:6px;margin-bottom:20px;font-size:22px;font-weight:900;">
+    SCORE: ${totalEarned} / 100 PTS — ${pct}%
+  </div>
+  <table>
+    <tr style="background:#1565c0;color:white;font-size:11px;font-weight:700;">
+      <td style="padding:6px 8px;">AUDIT ITEM</td>
+      <td style="padding:6px;text-align:center;">PTS</td>
+      <td style="padding:6px;text-align:center;">YES / NO</td>
+      <td style="padding:6px;">NOTES</td>
+      <td style="padding:6px;">PHOTOS</td>
     </tr>
     ${rows}
   </table>
@@ -807,9 +968,10 @@ function LpAudit({ onBack }) {
   const handleSubmit = async () => {
     setSubmitting(true); setSubmitStatus(null);
     try {
+      const htmlReport = generateLpEmail(info, answers);
       const payload = { formType:"lp_audit", ...info, totalEarned, totalPossible:100,
-        percentage:pct.toFixed(1), timestamp:new Date().toISOString(),
-        items: LP_ITEMS.map(item=>({ text:item.text, pts:item.pts, answer:answers[item.id]?.answer, notes:answers[item.id]?.notes, photo:answers[item.id]?.photo }))
+        percentage:pct.toFixed(1), timestamp:new Date().toISOString(), htmlReport,
+        items: LP_ITEMS.map(item=>({ text:item.text, pts:item.pts, answer:answers[item.id]?.answer, notes:answers[item.id]?.notes, photos:answers[item.id]?.photos||[] }))
       };
       const res = await fetch(WEBHOOK_URL,{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
       setSubmitStatus(res.ok?"success":"error");
@@ -867,7 +1029,7 @@ function LpAudit({ onBack }) {
             <ItemRow key={item.id} item={item} ans={answers[item.id]}
               onAnswer={v => setAnswer(item.id,"answer",v)}
               onNotes={v  => setAnswer(item.id,"notes",v)}
-              onPhoto={v  => setAnswer(item.id,"photo",v)}
+              onPhotos={v  => setAnswer(item.id,"photos",v)}
               showPts={true}
             />
           ))}
@@ -1244,7 +1406,7 @@ function HowToGuide({ onBack }) {
         <GuideStep num={2} text="Expand each category section by tapping it." />
         <GuideStep num={3} text='For each item, tap YES (earns points) or NO (zero points). Tap again to undo.' />
         <GuideStep num={4} text="Add notes to any item for additional context." />
-        <GuideStep num={5} text='Tap "Add Photo" to attach a photo from your camera or gallery.' />
+        <GuideStep num={5} text='Tap "Add Photo" to attach photos from your camera or gallery. You can add multiple photos per item.' />
         <GuideStep num={6} text='When finished, tap "Download / Print PDF" to save or print your report.' />
         <GuideStep num={7} text='Tap "Submit to Google Sheets" to send the data automatically.' />
 
