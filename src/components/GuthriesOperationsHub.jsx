@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from "react";
+import { uploadPhotosToDrive } from "@/lib/uploadPhotos";
 
 // ─── BRAND ───────────────────────────────────────────────────────────────────
 const R = "#C8102E";
 const YES_BG = "#e8f5e9"; const YES_BD = "#81c784";
 const NO_BG  = "#ffebee"; const NO_BD  = "#e57373";
-const WEBHOOK_URL = "https://n8n.srv1382362.hstgr.cloud/webhook/guthries-operations-hub";
+const SUBMIT_URL = "/api/submit";
 const LOCATIONS = ["Collierville", "Dexter", "Whitehaven", "Olive Branch", "Oxford"];
 
 const inputStyle = {
@@ -541,7 +542,7 @@ function generateInspectPDF(info, answers) {
   </table></body></html>`;
 }
 
-function generateInspectEmail(info, answers) {
+function generateInspectEmail(info, answers, cidsByItem = {}) {
   const earned = INSPECT_SECTIONS.reduce((sum,s) =>
     s.items.reduce((is,item) => is + (answers[item.id]?.answer==="yes" ? item.pts : 0), sum), 0);
   const pct = ((earned/TOTAL_POSSIBLE)*100).toFixed(1);
@@ -554,14 +555,18 @@ function generateInspectEmail(info, answers) {
     const itemRows = sortedItems.map(item => {
       const ans = answers[item.id];
       const bg = ans?.answer==="yes" ? "#e8f5e9" : ans?.answer==="no" ? "#ffebee" : "white";
+      const cids = cidsByItem[item.id] || [];
+      const photoImgs = cids.map(cid =>
+        `<img src="cid:${cid}" style="max-width:80px;max-height:60px;border-radius:4px;margin:2px;border:1px solid #ddd;" />`
+      ).join("");
       const photoCount = (ans?.photos||[]).length;
-      const photoText = photoCount > 0 ? `📷 ${photoCount} photo${photoCount>1?"s":""}` : "";
+      const photoText = photoCount > 0 && !cids.length ? `📷 ${photoCount} photo${photoCount>1?"s":""}` : "";
       return `<tr style="background:${bg};border-bottom:1px solid #eee;">
         <td style="padding:6px 8px;font-size:11px;">${item.text}</td>
         <td style="padding:6px;text-align:center;font-size:11px;font-weight:700;">${item.pts}</td>
         <td style="padding:6px;text-align:center;font-size:11px;font-weight:700;">${ans?.answer ? ans.answer.toUpperCase() : "—"}</td>
         <td style="padding:6px;font-size:10px;color:#555;">${ans?.notes||""}</td>
-        <td style="padding:6px;font-size:10px;color:#1565c0;">${photoText}</td>
+        <td style="padding:6px;font-size:10px;color:#1565c0;">${photoImgs || photoText}</td>
       </tr>`;
     }).join("");
     return `<tr><td colspan="5" style="background:#C8102E;color:white;padding:8px 10px;font-weight:700;font-size:13px;">${sec.emoji} ${sec.title} — ${secE}/${sec.possible} pts</td></tr>
@@ -688,17 +693,46 @@ function RestaurantInspection({ onBack }) {
   const handleSubmit = async () => {
     setSubmitting(true); setSubmitStatus(null);
     try {
-      const htmlReport = generateInspectEmail(info, answers);
+      // 1. Flatten photos in section/item iteration order (matches n8n).
+      const flat = [];
+      INSPECT_SECTIONS.forEach(s => s.items.forEach(item =>
+        (answers[item.id]?.photos || []).forEach(dataUrl =>
+          flat.push({ itemId: item.id, dataUrl })
+        )
+      ));
+      // 2. Build file metas with n8n-compatible names + cid refs.
+      const fileMetas = flat.map((p, i) => {
+        const ext = (p.dataUrl.match(/^data:image\/(\w+);/) || [,"jpeg"])[1];
+        return {
+          itemId: p.itemId,
+          dataUrl: p.dataUrl,
+          name: `Inspection_${info.location}_${info.date}_${i+1}.${ext}`,
+          mimeType: `image/${ext}`,
+          cid: `photo_${i+1}`,
+        };
+      });
+      // 3. Upload direct to Drive (bypasses Vercel body limit).
+      const uploaded = await uploadPhotosToDrive(info.location, fileMetas);
+      // 4. Map cids back to itemId for the email generator.
+      const cidsByItem = {};
+      fileMetas.forEach(f => {
+        (cidsByItem[f.itemId] = cidsByItem[f.itemId] || []).push(f.cid);
+      });
+      const htmlReport = generateInspectEmail(info, answers, cidsByItem);
+      const attachments = fileMetas.map((f, i) => ({
+        cid: f.cid, fileId: uploaded[i].fileId, name: f.name, mimeType: f.mimeType, webViewLink: uploaded[i].webViewLink,
+      }));
+      // 5. Payload without base64 (sections/items keep notes/answers only).
       const payload = { formType:"restaurant_inspection", ...info, totalEarned, totalPossible:TOTAL_POSSIBLE,
-        percentage:pct.toFixed(1), timestamp:new Date().toISOString(), htmlReport,
+        percentage:pct.toFixed(1), timestamp:new Date().toISOString(), htmlReport, attachments,
         sections: INSPECT_SECTIONS.map(s=>({ title:s.title,
           earned:s.items.reduce((sum,item)=>sum+(answers[item.id]?.answer==="yes"?item.pts:0),0),
           possible:s.possible, items:s.items.map(item=>({ text:item.text, pts:item.pts,
-            answer:answers[item.id]?.answer, notes:answers[item.id]?.notes, photos:answers[item.id]?.photos||[] }))
+            answer:answers[item.id]?.answer, notes:answers[item.id]?.notes }))
         }))};
-      const res = await fetch(WEBHOOK_URL,{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
+      const res = await fetch(SUBMIT_URL,{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
       setSubmitStatus(res.ok?"success":"error");
-    } catch { setSubmitStatus("error"); }
+    } catch (e) { console.error("Submit failed:", e); setSubmitStatus("error"); }
     setSubmitting(false);
   };
 
@@ -889,7 +923,7 @@ function generateLpPDF(info, answers) {
   </body></html>`;
 }
 
-function generateLpEmail(info, answers) {
+function generateLpEmail(info, answers, cidsByItem = {}) {
   const totalEarned = LP_ITEMS.reduce((sum, item) => sum + (answers[item.id]?.answer === "yes" ? item.pts : 0), 0);
   const pct = ((totalEarned/100)*100).toFixed(1);
   const sortedLpItems = [...LP_ITEMS].sort((a,b) => {
@@ -899,14 +933,18 @@ function generateLpEmail(info, answers) {
   const rows = sortedLpItems.map(item => {
     const ans = answers[item.id];
     const bg = ans?.answer==="yes"?"#e8f5e9":ans?.answer==="no"?"#ffebee":"white";
+    const cids = cidsByItem[item.id] || [];
+    const photoImgs = cids.map(cid =>
+      `<img src="cid:${cid}" style="max-width:80px;max-height:60px;border-radius:4px;margin:2px;border:1px solid #ddd;" />`
+    ).join("");
     const photoCount = (ans?.photos||[]).length;
-    const photoText = photoCount > 0 ? `📷 ${photoCount} photo${photoCount>1?"s":""}` : "";
+    const photoText = photoCount > 0 && !cids.length ? `📷 ${photoCount} photo${photoCount>1?"s":""}` : "";
     return `<tr style="background:${bg};border-bottom:1px solid #eee;">
       <td style="padding:8px;font-size:12px;">${item.text}</td>
       <td style="padding:8px;text-align:center;font-weight:700;font-size:12px;">${item.pts}</td>
       <td style="padding:8px;text-align:center;font-weight:700;font-size:12px;">${ans?.answer?ans.answer.toUpperCase():"—"}</td>
       <td style="padding:8px;font-size:11px;color:#555;">${ans?.notes||""}</td>
-      <td style="padding:8px;font-size:10px;color:#1565c0;">${photoText}</td>
+      <td style="padding:8px;font-size:10px;color:#1565c0;">${photoImgs || photoText}</td>
     </tr>`;
   }).join("");
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Guthrie's Loss Prevention Audit</title>
@@ -968,14 +1006,39 @@ function LpAudit({ onBack }) {
   const handleSubmit = async () => {
     setSubmitting(true); setSubmitStatus(null);
     try {
-      const htmlReport = generateLpEmail(info, answers);
+      // Same direct-to-Drive flow as inspection, just LP filename + items[].
+      const flat = [];
+      LP_ITEMS.forEach(item =>
+        (answers[item.id]?.photos || []).forEach(dataUrl =>
+          flat.push({ itemId: item.id, dataUrl })
+        )
+      );
+      const fileMetas = flat.map((p, i) => {
+        const ext = (p.dataUrl.match(/^data:image\/(\w+);/) || [,"jpeg"])[1];
+        return {
+          itemId: p.itemId,
+          dataUrl: p.dataUrl,
+          name: `LP_${info.location}_${info.date}_${i+1}.${ext}`,
+          mimeType: `image/${ext}`,
+          cid: `photo_${i+1}`,
+        };
+      });
+      const uploaded = await uploadPhotosToDrive(info.location, fileMetas);
+      const cidsByItem = {};
+      fileMetas.forEach(f => {
+        (cidsByItem[f.itemId] = cidsByItem[f.itemId] || []).push(f.cid);
+      });
+      const htmlReport = generateLpEmail(info, answers, cidsByItem);
+      const attachments = fileMetas.map((f, i) => ({
+        cid: f.cid, fileId: uploaded[i].fileId, name: f.name, mimeType: f.mimeType, webViewLink: uploaded[i].webViewLink,
+      }));
       const payload = { formType:"lp_audit", ...info, totalEarned, totalPossible:100,
-        percentage:pct.toFixed(1), timestamp:new Date().toISOString(), htmlReport,
-        items: LP_ITEMS.map(item=>({ text:item.text, pts:item.pts, answer:answers[item.id]?.answer, notes:answers[item.id]?.notes, photos:answers[item.id]?.photos||[] }))
+        percentage:pct.toFixed(1), timestamp:new Date().toISOString(), htmlReport, attachments,
+        items: LP_ITEMS.map(item=>({ text:item.text, pts:item.pts, answer:answers[item.id]?.answer, notes:answers[item.id]?.notes }))
       };
-      const res = await fetch(WEBHOOK_URL,{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
+      const res = await fetch(SUBMIT_URL,{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
       setSubmitStatus(res.ok?"success":"error");
-    } catch { setSubmitStatus("error"); }
+    } catch (e) { console.error("Submit failed:", e); setSubmitStatus("error"); }
     setSubmitting(false);
   };
 
